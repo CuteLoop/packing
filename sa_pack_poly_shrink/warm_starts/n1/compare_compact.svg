@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="1000" viewBox="0 0 1560 1000">
+<rect x="0" y="0" width="1560" height="1000" fill="white"/>
+<text x="12" y="24" font-family="sans-serif" font-size="16" fill="#000">Warm-start comparison (N=1) — shared world scale</text>
+<rect x="1.0" y="41.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="12.0" y="62.0" font-family="sans-serif" font-size="14" fill="#000">grid0</text>
+<rect x="18.0" y="76.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="130.78" y="117.42" width="329.51" height="329.51" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="295.53,117.42 336.72,216.27 316.13,216.27 361.44,298.65 328.49,298.65 410.86,381.03 320.25,381.03 320.25,446.93 270.82,446.93 270.82,381.03 180.20,381.03 262.58,298.65 229.63,298.65 274.94,216.27 254.35,216.27 295.53,117.42"/>
+<circle cx="295.53" cy="381.03" r="2.2" fill="#000"/>
+<rect x="521.0" y="41.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="532.0" y="62.0" font-family="sans-serif" font-size="14" fill="#000">alt45</text>
+<rect x="538.0" y="76.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="629.14" y="194.63" width="267.95" height="267.95" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="629.14,194.63 728.16,235.40 713.60,249.97 803.89,276.18 780.59,299.48 897.09,299.48 833.01,363.55 879.61,410.16 844.66,445.11 798.06,398.51 733.99,462.58 733.99,346.08 710.69,369.38 684.47,279.09 669.91,293.65 629.14,194.63"/>
+<circle cx="815.54" cy="381.03" r="2.2" fill="#000"/>
+<rect x="1041.0" y="41.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="1052.0" y="62.0" font-family="sans-serif" font-size="14" fill="#000">circle</text>
+<rect x="1058.0" y="76.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="1170.78" y="117.42" width="329.51" height="329.51" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="1335.53,117.42 1376.72,216.27 1356.13,216.27 1401.44,298.65 1368.49,298.65 1450.86,381.03 1360.25,381.03 1360.25,446.93 1310.82,446.93 1310.82,381.03 1220.20,381.03 1302.58,298.65 1269.63,298.65 1314.94,216.27 1294.35,216.27 1335.53,117.42"/>
+<circle cx="1335.53" cy="381.03" r="2.2" fill="#000"/>
+<rect x="1.0" y="521.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="12.0" y="542.0" font-family="sans-serif" font-size="14" fill="#000">spiral</text>
+<rect x="18.0" y="556.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="130.78" y="597.42" width="329.51" height="329.51" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="295.53,597.42 336.72,696.27 316.13,696.27 361.44,778.65 328.49,778.65 410.86,861.03 320.25,861.03 320.25,926.93 270.82,926.93 270.82,861.03 180.20,861.03 262.58,778.65 229.63,778.65 274.94,696.27 254.35,696.27 295.53,597.42"/>
+<circle cx="295.53" cy="861.03" r="2.2" fill="#000"/>
+<rect x="521.0" y="521.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="532.0" y="542.0" font-family="sans-serif" font-size="14" fill="#000">hex</text>
+<rect x="538.0" y="556.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="650.78" y="597.42" width="329.51" height="329.51" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="815.53,597.42 856.72,696.27 836.13,696.27 881.44,778.65 848.49,778.65 930.86,861.03 840.25,861.03 840.25,926.93 790.82,926.93 790.82,861.03 700.20,861.03 782.58,778.65 749.63,778.65 794.94,696.27 774.35,696.27 815.53,597.42"/>
+<circle cx="815.53" cy="861.03" r="2.2" fill="#000"/>
+<rect x="1041.0" y="521.0" width="518.0" height="478.0" fill="none" stroke="#ddd"/>
+<text x="1052.0" y="542.0" font-family="sans-serif" font-size="14" fill="#000">halton</text>
+<rect x="1058.0" y="556.0" width="484.0" height="428.0" fill="none" stroke="#f2f2f2"/>
+<rect x="1170.78" y="597.42" width="329.51" height="329.51" fill="none" stroke="#888" stroke-width="1.0"/>
+<polyline fill="none" stroke="#000" stroke-width="1.1" points="1335.53,597.42 1376.72,696.27 1356.13,696.27 1401.44,778.65 1368.49,778.65 1450.86,861.03 1360.25,861.03 1360.25,926.93 1310.82,926.93 1310.82,861.03 1220.20,861.03 1302.58,778.65 1269.63,778.65 1314.94,696.27 1294.35,696.27 1335.53,597.42"/>
+<circle cx="1335.53" cy="861.03" r="2.2" fill="#000"/>
+</svg>
