@@ -1,4 +1,3 @@
-cat > build.sh <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
@@ -15,6 +14,3 @@ gcc -O3 -march=native -std=c11 -Wall -Wextra -pedantic \
   HPC_parallel.c -o bin/HPC_parallel -lm
 
 echo "Built: bin/HPC_parallel"
-EOF
-
-chmod +x build.sh
