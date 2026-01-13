@@ -1,41 +1,30 @@
-// sa_pack_shrink_poly_hpc.c
+// HPC_parallel.c
 // ------------------------------------------------------------
-// Simulated annealing for NON-CONVEX polygon packing (ChristmasTree) in a square,
-// using triangulation + SAT (triangle-triangle) for collisions, and an OUTER LOOP
-// to shrink the square side length L.
 //
-// UPDATE (as requested): “leave running” mode + robust best-L search:
-//   - Adds a long-running outer optimizer after the initial bracket/bisect,
-//     using adaptive multiplicative shrink steps with backoff (stochastic descent).
-//   - Periodic checkpoints (CSV + SVG) even if no improvement, so HPC jobs always
-//     produce artifacts.
-//   - Optional wall-time limit; otherwise runs until killed.
+// Simulated annealing for NON-CONVEX polygon packing in a square,
+// HPC-ready variant:
+//  - Unique output prefix (--out_prefix) to avoid file collisions on job arrays
+//  - Deterministic seeding: base_seed + run_id + trial_id (no time(NULL) reseeds)
+//  - Removes fine-grained OpenMP in triangle loops (NTRI=13)
+//  - Removes per-iteration Vec2[3] materialization: project directly from vertex arrays
 //
-// UPDATE (option 9.b for N=1):
-//   - For N=1, scan theta in [0, pi/2] with very small increments,
-//     choose theta minimizing the bounding square side length of the rotated polygon,
-//     and center the AABB inside the square.
-//
-// CLI:
-//   ./sa_pack_shrink_poly_hpc N [seed]
-//       [--init path] [--demo] [--threads K]
-//       [--time_limit SEC]            (default: 0 = run forever)
-//       [--checkpoint_every SEC]      (default: 600)
-//       [--polish]                    (enable long-running shrink search; default ON)
-//       [--no_polish]                 (disable long-running shrink search)
-//       [--min_shrink X]              (default: 1e-5)   // min fractional shrink
-//       [--max_shrink X]              (default: 2e-3)   // max fractional shrink
-//       [--target_success P]          (default: 0.35)   // success rate target for shrink attempts
-//       [--trials_polish K]           (default: 5)      // SA trials per polish attempt
-//
-// Outputs (always under csv/ and img/):
-//   csv/best_polys_N###.csv  (best feasible)
-//   img/best_N###.svg
-//   csv/checkpoint_N###.csv  (periodic checkpoint of current best feasible)
-//   img/checkpoint_N###.svg
+// IMPORTANT UPDATE (this revision):
+//  - Fixes bracketing/bisection logic around the *provable* area bound.
+//    The old code sometimes clamped L_low *down* to the area bound after SA declared infeasible,
+//    losing a tighter (SA-found) lower bracket.
+//  - Separates:
+//      * L_area_infeas : provably infeasible (area bound)
+//      * L_low         : lower bracket (SA-infeasible OR provably infeasible)
+//    and labels outputs accordingly.
+//  - Makes the "provably infeasible" check consistent everywhere (initial feasibility,
+//    bracketing, bisection, polish).
+//  - Minor polish-loop cleanup: avoid redundant update/rebuild before scale.
 //
 // Compile:
-//   gcc -O3 -march=native -fopenmp -std=c11 -Wall -Wextra -pedantic sa_pack_shrink_poly_hpc.c -o sa_pack_shrink_poly_hpc -lm
+//   gcc -O3 -march=native -std=c11 -Wall -Wextra -pedantic HPC_parallel.c -o HPC_parallel -lm
+//
+// Typical SLURM array usage:
+//   srun ./HPC_parallel N 12345 --run_id $SLURM_ARRAY_TASK_ID --out_prefix run_${SLURM_ARRAY_TASK_ID}
 //
 // ------------------------------------------------------------
 
@@ -45,14 +34,10 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
-
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include <unistd.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -76,32 +61,35 @@ static void ensure_dir(const char *name) {
 }
 
 static double now_seconds(void) {
-#ifdef _OPENMP
-    return omp_get_wtime();
-#else
+    // coarse wall time is fine here
     return (double)time(NULL);
-#endif
 }
 
 static void usage(const char *argv0) {
     fprintf(stderr,
         "Usage:\n"
-        "  %s N [seed] [--init path] [--demo] [--threads K]\n"
-        "       [--time_limit SEC] [--checkpoint_every SEC]\n"
-        "       [--polish | --no_polish]\n"
-        "       [--min_shrink X] [--max_shrink X] [--target_success P]\n"
-        "       [--trials_polish K]\n"
+        "  %s N [seed]\n"
+        "      [--init path]\n"
+        "      [--demo]\n"
+        "      [--time_limit SEC]\n"
+        "      [--checkpoint_every SEC]\n"
+        "      [--polish | --no_polish]\n"
+        "      [--min_shrink X] [--max_shrink X] [--target_success P]\n"
+        "      [--trials_polish K]\n"
+        "      [--trials_bracket K] [--trials_bisect K]\n"
+        "      [--run_id R]\n"
+        "      [--out_prefix STR]\n"
         "\n"
-        "Outputs:\n"
-        "  csv/best_polys_N###.csv\n"
-        "  img/best_N###.svg\n"
-        "  csv/checkpoint_N###.csv\n"
-        "  img/checkpoint_N###.svg\n",
+        "Outputs under csv/ and img/ with prefix:\n"
+        "  csv/<prefix>_best_polys_N###.csv\n"
+        "  img/<prefix>_best_N###.svg\n"
+        "  csv/<prefix>_checkpoint_N###.csv\n"
+        "  img/<prefix>_checkpoint_N###.svg\n",
         argv0
     );
 }
 
-// ---------------- RNG (xorshift64*) ----------------
+// ---------------- RNG (SplitMix64 + xorshift64*) ----------------
 
 typedef struct { uint64_t s; } RNG;
 
@@ -142,11 +130,19 @@ static double wrap_angle_0_2pi(double th) {
     return th;
 }
 
+// Deterministic per-trial seed derivation (important for HPC arrays)
+static uint64_t make_trial_seed(uint64_t base_seed, uint64_t run_id, uint64_t trial_id) {
+    uint64_t x = base_seed;
+    x ^= 0xD1B54A32D192ED03ULL * (run_id + 0x9e3779b97f4a7c15ULL);
+    x ^= 0x94D049BB133111EBULL * (trial_id + 0xBF58476D1CE4E5B9ULL);
+    // run splitmix to diffuse
+    return splitmix64(&x);
+}
+
 // ---------------- Geometry: base polygon + triangulation ----------------
 
 typedef struct { double x, y; } Vec2;
 typedef struct { double minx, miny, maxx, maxy; } AABB;
-
 typedef struct { int a, b, c; } Tri;
 
 static const int NV = 15;
@@ -167,23 +163,22 @@ static const Tri TRIS[] = {
 };
 static const int NTRI = 13;
 
-// Base (local) vertices (unscaled), matching Python definition.
 static const Vec2 BASE_V[15] = {
     {  0.0,     0.8  },  // 0 tip
-    {  0.125,   0.5  },  // 1 top_w/2 , tier1
-    {  0.0625,  0.5  },  // 2 top_w/4 , tier1
-    {  0.2,     0.25 },  // 3 mid_w/2 , tier2
-    {  0.1,     0.25 },  // 4 mid_w/4 , tier2
-    {  0.35,    0.0  },  // 5 base_w/2 , base
-    {  0.075,   0.0  },  // 6 trunk_w/2, base
-    {  0.075,  -0.2  },  // 7 trunk_w/2, trunk_bottom
-    { -0.075,  -0.2  },  // 8 -trunk_w/2, trunk_bottom
-    { -0.075,   0.0  },  // 9 -trunk_w/2, base
-    { -0.35,    0.0  },  // 10 -base_w/2, base
-    { -0.1,     0.25 },  // 11 -mid_w/4, tier2
-    { -0.2,     0.25 },  // 12 -mid_w/2, tier2
-    { -0.0625,  0.5  },  // 13 -top_w/4, tier1
-    { -0.125,   0.5  },  // 14 -top_w/2, tier1
+    {  0.125,   0.5  },  // 1
+    {  0.0625,  0.5  },  // 2
+    {  0.2,     0.25 },  // 3
+    {  0.1,     0.25 },  // 4
+    {  0.35,    0.0  },  // 5
+    {  0.075,   0.0  },  // 6
+    {  0.075,  -0.2  },  // 7
+    { -0.075,  -0.2  },  // 8
+    { -0.075,   0.0  },  // 9
+    { -0.35,    0.0  },  // 10
+    { -0.1,     0.25 },  // 11
+    { -0.2,     0.25 },  // 12
+    { -0.0625,  0.5  },  // 13
+    { -0.125,   0.5  },  // 14
 };
 
 static double base_bounding_radius(void) {
@@ -201,8 +196,7 @@ static double base_polygon_area(void) {
         int j = (i + 1) % NV;
         a += BASE_V[i].x * BASE_V[j].y - BASE_V[j].x * BASE_V[i].y;
     }
-    a = 0.5 * fabs(a);
-    return a;
+    return 0.5 * fabs(a);
 }
 
 // ---------------- Transform + AABB ----------------
@@ -214,9 +208,9 @@ static inline Vec2 rot_trans(Vec2 v, double c, double s, double tx, double ty) {
     return out;
 }
 
-static void build_world_verts(const Vec2 *base, Vec2 *world, double cx, double cy, double theta) {
+static void build_world_verts(Vec2 *world, double cx, double cy, double theta) {
     double c = cos(theta), s = sin(theta);
-    for (int i = 0; i < NV; i++) world[i] = rot_trans(base[i], c, s, cx, cy);
+    for (int i = 0; i < NV; i++) world[i] = rot_trans(BASE_V[i], c, s, cx, cy);
 }
 
 static AABB aabb_of_verts(const Vec2 *w) {
@@ -236,17 +230,14 @@ static inline AABB aabb_of_tri_pts(const Vec2 p0, const Vec2 p1, const Vec2 p2) 
     AABB b;
     b.minx = b.maxx = p0.x;
     b.miny = b.maxy = p0.y;
-
     if (p1.x < b.minx) b.minx = p1.x;
     if (p1.x > b.maxx) b.maxx = p1.x;
     if (p1.y < b.miny) b.miny = p1.y;
     if (p1.y > b.maxy) b.maxy = p1.y;
-
     if (p2.x < b.minx) b.minx = p2.x;
     if (p2.x > b.maxx) b.maxx = p2.x;
     if (p2.y < b.miny) b.miny = p2.y;
     if (p2.y > b.maxy) b.maxy = p2.y;
-
     return b;
 }
 
@@ -259,21 +250,21 @@ static inline int aabb_overlap(const AABB *a, const AABB *b) {
 static double outside_penalty_aabb(const AABB *b, double L) {
     double half = 0.5 * L;
     double pen = 0.0;
-
     if (b->minx < -half) { double d = (-half - b->minx); pen += d * d; }
     if (b->maxx >  half) { double d = (b->maxx - half);  pen += d * d; }
     if (b->miny < -half) { double d = (-half - b->miny); pen += d * d; }
     if (b->maxy >  half) { double d = (b->maxy - half);  pen += d * d; }
-
     return pen;
 }
 
-// ---------------- SAT for triangle-triangle ----------------
+// ---------------- SAT for triangle-triangle (projection directly from vertex array) ----------------
 
-static inline void proj3(const Vec2 p[3], double ax, double ay, double *mn, double *mx) {
-    double v0 = p[0].x * ax + p[0].y * ay;
-    double v1 = p[1].x * ax + p[1].y * ay;
-    double v2 = p[2].x * ax + p[2].y * ay;
+static inline void proj3_idx(const Vec2 *w, int i0, int i1, int i2,
+                             double ax, double ay, double *mn, double *mx)
+{
+    double v0 = w[i0].x * ax + w[i0].y * ay;
+    double v1 = w[i1].x * ax + w[i1].y * ay;
+    double v2 = w[i2].x * ax + w[i2].y * ay;
 
     double lo = v0, hi = v0;
     if (v1 < lo) lo = v1;
@@ -284,14 +275,25 @@ static inline void proj3(const Vec2 p[3], double ax, double ay, double *mn, doub
     *mn = lo; *mx = hi;
 }
 
-static int tri_sat_penetration(const Vec2 A[3], const Vec2 B[3], double *depth_out) {
+static int tri_sat_penetration_idx(const Vec2 *wi, const Vec2 *wj,
+                                   int ai0, int ai1, int ai2,
+                                   int bj0, int bj1, int bj2,
+                                   double *depth_out)
+{
     double min_overlap = 1e300;
 
+    // Two passes: edges of A triangle, then edges of B triangle
     for (int pass = 0; pass < 2; pass++) {
-        const Vec2 *T = (pass == 0) ? A : B;
+        const Vec2 *w = (pass == 0) ? wi : wj;
+        int i0 = (pass == 0) ? ai0 : bj0;
+        int i1 = (pass == 0) ? ai1 : bj1;
+        int i2 = (pass == 0) ? ai2 : bj2;
+
+        int idx[3] = { i0, i1, i2 };
+
         for (int e = 0; e < 3; e++) {
-            Vec2 p0 = T[e];
-            Vec2 p1 = T[(e + 1) % 3];
+            Vec2 p0 = w[idx[e]];
+            Vec2 p1 = w[idx[(e + 1) % 3]];
             double ex = p1.x - p0.x;
             double ey = p1.y - p0.y;
 
@@ -302,8 +304,8 @@ static int tri_sat_penetration(const Vec2 A[3], const Vec2 B[3], double *depth_o
             if (len2 < 1e-30) continue;
 
             double amin, amax, bmin, bmax;
-            proj3(A, ax, ay, &amin, &amax);
-            proj3(B, ax, ay, &bmin, &bmax);
+            proj3_idx(wi, ai0, ai1, ai2, ax, ay, &amin, &amax);
+            proj3_idx(wj, bj0, bj1, bj2, ax, ay, &bmin, &bmax);
 
             double o = fmin(amax, bmax) - fmax(amin, bmin);
             if (o <= 0.0) return 0;
@@ -324,10 +326,10 @@ typedef struct {
     int nx, ny;
     double half;
 
-    int *head;     // nx*ny
-    int *next;     // N
-    int *prev;     // N
-    int *cell_id;  // N
+    int *head;
+    int *next;
+    int *prev;
+    int *cell_id;
     int N;
 } Grid;
 
@@ -398,7 +400,6 @@ static void grid_insert(Grid *g, int i, double x, double y) {
     g->next[i] = h;
     if (h != -1) g->prev[h] = i;
     g->head[cid] = i;
-
     g->cell_id[i] = cid;
 }
 
@@ -429,9 +430,7 @@ static void grid_update(Grid *g, int i, double x, double y) {
     grid_insert(g, i, x, y);
 }
 
-static void grid_rebuild(Grid *g, int N, double L, double cell,
-                         const double *cx, const double *cy)
-{
+static void grid_rebuild(Grid *g, int N, double L, double cell, const double *cx, const double *cy) {
     grid_free(g);
     grid_init(g, N, L, cell);
     for (int i = 0; i < N; i++) grid_insert(g, i, cx[i], cy[i]);
@@ -447,11 +446,11 @@ typedef struct {
     double *cy;
     double *th;
 
-    Vec2 *world;     // N*NV
-    AABB *aabb;      // N
-    AABB *tri_aabb;  // N*NTRI (cached triangle AABBs)
+    Vec2  *world;     // N*NV
+    AABB  *aabb;      // N
+    AABB  *tri_aabb;  // N*NTRI
 
-    double br;       // base bounding radius
+    double br;
 
     Grid grid;
     double cell;
@@ -482,7 +481,6 @@ static State state_alloc(int N) {
     s.cx = (double*)calloc((size_t)N, sizeof(double));
     s.cy = (double*)calloc((size_t)N, sizeof(double));
     s.th = (double*)calloc((size_t)N, sizeof(double));
-
     s.world = (Vec2*)calloc((size_t)N * (size_t)NV, sizeof(Vec2));
     s.aabb  = (AABB*)calloc((size_t)N, sizeof(AABB));
     s.tri_aabb = (AABB*)calloc((size_t)N * (size_t)NTRI, sizeof(AABB));
@@ -493,7 +491,6 @@ static State state_alloc(int N) {
     }
 
     s.br = base_bounding_radius();
-
     s.cell = 2.0 * s.br;
     if (s.cell < 1e-9) s.cell = 1e-9;
 
@@ -504,17 +501,13 @@ static State state_alloc(int N) {
 static void state_free(State *s) {
     free(s->cx); free(s->cy); free(s->th);
     free(s->world); free(s->aabb); free(s->tri_aabb);
-
     s->cx = s->cy = s->th = NULL;
-    s->world = NULL;
-    s->aabb = NULL;
-    s->tri_aabb = NULL;
-
+    s->world = NULL; s->aabb = NULL; s->tri_aabb = NULL;
     grid_free(&s->grid);
 }
 
 static void update_instance(State *s, int i) {
-    build_world_verts(BASE_V, W(s, i), s->cx[i], s->cy[i], s->th[i]);
+    build_world_verts(W(s, i), s->cx[i], s->cy[i], s->th[i]);
     s->aabb[i] = aabb_of_verts(W(s, i));
 
     const Vec2 *wi = Wc(s, i);
@@ -531,7 +524,7 @@ static void update_all(State *s) {
     for (int i = 0; i < s->N; i++) update_instance(s, i);
 }
 
-// ---------------- Pair overlap penalty ----------------
+// ---------------- Pair overlap penalty (hot) ----------------
 
 static inline int bounding_circle_reject(const State *s, int i, int j) {
     double dx = s->cx[i] - s->cx[j];
@@ -552,32 +545,20 @@ static double overlap_pair_penalty(const State *s, int i, int j) {
 
     double pen = 0.0;
 
-#ifdef _OPENMP
-    #pragma omp parallel for reduction(+:pen) schedule(static)
+    // NOTE: intentionally single-threaded; NTRI=13 is too small for OpenMP efficiency.
     for (int ta = 0; ta < NTRI; ta++) {
         const AABB *aTa = &ai[ta];
-        Vec2 Atri[3] = { wi[TRIS[ta].a], wi[TRIS[ta].b], wi[TRIS[ta].c] };
+        int ai0 = TRIS[ta].a, ai1 = TRIS[ta].b, ai2 = TRIS[ta].c;
 
         for (int tb = 0; tb < NTRI; tb++) {
             if (!aabb_overlap(aTa, &aj[tb])) continue;
-            Vec2 Btri[3] = { wj[TRIS[tb].a], wj[TRIS[tb].b], wj[TRIS[tb].c] };
+            int bj0 = TRIS[tb].a, bj1 = TRIS[tb].b, bj2 = TRIS[tb].c;
             double depth = 0.0;
-            if (tri_sat_penetration(Atri, Btri, &depth)) pen += depth * depth;
+            if (tri_sat_penetration_idx(wi, wj, ai0, ai1, ai2, bj0, bj1, bj2, &depth)) {
+                pen += depth * depth;
+            }
         }
     }
-#else
-    for (int ta = 0; ta < NTRI; ta++) {
-        const AABB *aTa = &ai[ta];
-        Vec2 Atri[3] = { wi[TRIS[ta].a], wi[TRIS[ta].b], wi[TRIS[ta].c] };
-
-        for (int tb = 0; tb < NTRI; tb++) {
-            if (!aabb_overlap(aTa, &aj[tb])) continue;
-            Vec2 Btri[3] = { wj[TRIS[tb].a], wj[TRIS[tb].b], wj[TRIS[tb].c] };
-            double depth = 0.0;
-            if (tri_sat_penetration(Atri, Btri, &depth)) pen += depth * depth;
-        }
-    }
-#endif
 
     return pen;
 }
@@ -742,9 +723,7 @@ static void grid_init_layout(State *s, int cols, int rows, double gap, double *L
 
 // ---------------- CSV init loader + optional read L from header ----------------
 
-static int load_init_csv(const char *path, int N,
-                         double *cx, double *cy, double *th)
-{
+static int load_init_csv(const char *path, int N, double *cx, double *cy, double *th) {
     FILE *f = fopen(path, "r");
     if (!f) return 0;
 
@@ -779,7 +758,6 @@ static int read_L_from_csv_header(const char *path, double *L_out) {
     int ok = 0;
     while (fgets(line, (int)sizeof(line), f)) {
         if (line[0] != '#') break;
-        // Expect: "# L=... best_feas=... N=..."
         double Ltmp = 0.0;
         if (sscanf(line, " # L=%lf", &Ltmp) == 1) {
             if (Ltmp > 0.0) { *L_out = Ltmp; ok = 1; break; }
@@ -794,7 +772,6 @@ static int read_L_from_csv_header(const char *path, double *L_out) {
 typedef struct {
     int idx;
     double old_cx, old_cy, old_th;
-    int old_cell;
     double d_overlap;
     double d_out;
 } Move;
@@ -812,7 +789,6 @@ static Move propose_move(State *s, Totals *tot, RNG *rng,
     m.old_cx = s->cx[k];
     m.old_cy = s->cy[k];
     m.old_th = s->th[k];
-    m.old_cell = s->grid.cell_id[k];
 
     double old_ov  = overlap_sum_for_k_grid(s, k);
     double old_out = outside_for_k(s, k);
@@ -1041,6 +1017,7 @@ static double run_trial(State *s, RNG *rng,
 static double try_pack_at_current_L(State *s, RNG *rng,
                                    const PhaseParams *A, const PhaseParams *B,
                                    int trials,
+                                   uint64_t base_seed, uint64_t run_id,
                                    double *out_best_cx, double *out_best_cy, double *out_best_th,
                                    int verbose_trials)
 {
@@ -1057,7 +1034,7 @@ static double try_pack_at_current_L(State *s, RNG *rng,
     double best_feas = 1e300;
 
     for (int tr = 0; tr < trials; tr++) {
-        uint64_t seed = (uint64_t)time(NULL) ^ (uint64_t)(0x9E3779B97F4A7C15ULL * (uint64_t)(tr + 1));
+        uint64_t seed = make_trial_seed(base_seed, run_id, (uint64_t)tr);
         rng_seed(rng, seed);
 
         if (tr > 0) random_init(s, rng);
@@ -1077,6 +1054,7 @@ static double try_pack_at_current_L(State *s, RNG *rng,
             }
         }
 
+        // reset state to current best so far for continuity
         for (int i = 0; i < N; i++) {
             s->cx[i] = out_best_cx[i];
             s->cy[i] = out_best_cy[i];
@@ -1094,11 +1072,18 @@ static double try_pack_at_current_L(State *s, RNG *rng,
 
 // ---------------- Export: CSV + SVG ----------------
 
-static int write_polys_csv(const char *path, const State *s, double best_feas) {
+static int write_polys_csv(const char *path, const State *s, double best_feas,
+                           uint64_t seed, uint64_t run_id, const char *prefix)
+{
     FILE *f = fopen(path, "w");
     if (!f) return 0;
 
-    fprintf(f, "# L=%.17g best_feas=%.17g N=%d\n", s->L, best_feas, s->N);
+    // rich header for later reduction
+    fprintf(f, "# prefix=%s run_id=%llu seed=%llu L=%.17g best_feas=%.17g N=%d\n",
+            (prefix ? prefix : "NA"),
+            (unsigned long long)run_id, (unsigned long long)seed,
+            s->L, best_feas, s->N);
+
     fprintf(f, "i,cx,cy,theta_rad\n");
     for (int i = 0; i < s->N; i++) {
         fprintf(f, "%d,%.17g,%.17g,%.17g\n", i, s->cx[i], s->cy[i], s->th[i]);
@@ -1108,7 +1093,8 @@ static int write_polys_csv(const char *path, const State *s, double best_feas) {
 }
 
 static int write_best_svg(const char *path, const State *s, double best_feas,
-                          int width_px, int height_px, double margin_px)
+                          int width_px, int height_px, double margin_px,
+                          const char *prefix, uint64_t run_id)
 {
     FILE *f = fopen(path, "w");
     if (!f) return 0;
@@ -1131,8 +1117,9 @@ static int write_best_svg(const char *path, const State *s, double best_feas,
             width_px, height_px, width_px, height_px);
 
     fprintf(f, "  <rect x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" fill=\"white\"/>\n", width_px, height_px);
-    fprintf(f, "  <text x=\"%.1f\" y=\"%.1f\" font-family=\"monospace\" font-size=\"12\">L=%.12g feas=%.3e N=%d</text>\n",
-            10.0, 18.0, s->L, best_feas, s->N);
+    fprintf(f, "  <text x=\"%.1f\" y=\"%.1f\" font-family=\"monospace\" font-size=\"12\">prefix=%s run_id=%llu L=%.12g feas=%.3e N=%d</text>\n",
+            10.0, 18.0, (prefix ? prefix : "NA"),
+            (unsigned long long)run_id, s->L, best_feas, s->N);
 
     fprintf(f, "  <rect x=\"%.6f\" y=\"%.6f\" width=\"%.6f\" height=\"%.6f\" fill=\"none\" stroke=\"#000\" stroke-width=\"2\"/>\n",
             ox, oy, square_px, square_px);
@@ -1157,114 +1144,9 @@ static int write_best_svg(const char *path, const State *s, double best_feas,
 
 static inline int is_feasible(double feas, double tol) { return (feas <= tol); }
 
-static inline int guaranteed_infeasible_by_area(double L, double area_lb) {
-    return (L <= area_lb);
-}
-
-// ---------------- N=1 shortcut (Option 9.b: scan theta in [0, pi/2]) ----------------
-
-static void rotated_aabb_theta(double theta,
-                               double *minx, double *miny,
-                               double *maxx, double *maxy)
-{
-    const double c = cos(theta), s = sin(theta);
-
-    double mnx =  1e300, mny =  1e300;
-    double mxx = -1e300, mxy = -1e300;
-
-    for (int i = 0; i < NV; i++) {
-        const double x = BASE_V[i].x;
-        const double y = BASE_V[i].y;
-        const double rx = c * x - s * y;
-        const double ry = s * x + c * y;
-
-        if (rx < mnx) mnx = rx;
-        if (rx > mxx) mxx = rx;
-        if (ry < mny) mny = ry;
-        if (ry > mxy) mxy = ry;
-    }
-
-    *minx = mnx; *miny = mny;
-    *maxx = mxx; *maxy = mxy;
-}
-
-static double bounding_square_L_for_theta(double theta,
-                                          double *minx, double *miny,
-                                          double *maxx, double *maxy)
-{
-    rotated_aabb_theta(theta, minx, miny, maxx, maxy);
-    const double w = (*maxx - *minx);
-    const double h = (*maxy - *miny);
-    return (w > h) ? w : h;
-}
-
-static void solve_N1_bounding_box(State *s)
-{
-    // AABB extents are periodic with pi/2 for axis-aligned boxes -> search [0, pi/2]
-    const double a0 = 0.0;
-    const double a1 = 0.5 * M_PI;
-
-    // Coarse scan: very small increments
-    // 200k steps => ~7.85e-6 rad step over [0, pi/2]
-    const int STEPS_COARSE = 200000;
-    const double dth = (a1 - a0) / (double)STEPS_COARSE;
-
-    double best_th = 0.0;
-    double best_L  = 1e300;
-    double best_minx=0.0, best_miny=0.0, best_maxx=0.0, best_maxy=0.0;
-
-    for (int k = 0; k <= STEPS_COARSE; k++) {
-        const double th = a0 + (double)k * dth;
-        double minx, miny, maxx, maxy;
-        const double L = bounding_square_L_for_theta(th, &minx, &miny, &maxx, &maxy);
-
-        if (L < best_L) {
-            best_L = L;
-            best_th = th;
-            best_minx = minx; best_miny = miny;
-            best_maxx = maxx; best_maxy = maxy;
-        }
-    }
-
-    // Refine locally around best_th (narrow window, finer step)
-    // +/- 50 coarse steps neighborhood
-    const double refine_half_width = 50.0 * dth;
-    const double r0 = fmax(a0, best_th - refine_half_width);
-    const double r1 = fmin(a1, best_th + refine_half_width);
-
-    const int STEPS_REFINE = 20000;
-    const double dth2 = (r1 - r0) / (double)STEPS_REFINE;
-
-    for (int k = 0; k <= STEPS_REFINE; k++) {
-        const double th = r0 + (double)k * dth2;
-        double minx, miny, maxx, maxy;
-        const double L = bounding_square_L_for_theta(th, &minx, &miny, &maxx, &maxy);
-
-        if (L < best_L) {
-            best_L = L;
-            best_th = th;
-            best_minx = minx; best_miny = miny;
-            best_maxx = maxx; best_maxy = maxy;
-        }
-    }
-
-    // Minimal square side containing rotated AABB, with tiny slack for FP safety
-    const double slack = 1.0 + 1e-12;
-    s->L = best_L * slack;
-
-    // Center the rotated AABB inside the square
-    const double cx0 = 0.5 * (best_minx + best_maxx);
-    const double cy0 = 0.5 * (best_miny + best_maxy);
-
-    s->cx[0] = -cx0;
-    s->cy[0] = -cy0;
-    s->th[0] = best_th;
-
-    update_all(s);
-    rebuild_grid(s);
-
-    printf("N=1 scan: best theta=%.17g rad (%.12f deg), L=%.17g\n",
-           best_th, best_th * (180.0 / M_PI), s->L);
+// L_area_infeas is precomputed as sqrt(N*area)*(1-eps). If L <= L_area_infeas => provably infeasible.
+static inline int provably_infeasible_by_area(double L, double L_area_infeas) {
+    return (L <= L_area_infeas);
 }
 
 // ---------------- Config ----------------
@@ -1274,17 +1156,33 @@ typedef struct {
     uint64_t seed;
     const char *init_path;
     int demo;
-    int threads;
 
-    double time_limit_sec;          // 0 => forever
-    double checkpoint_every_sec;    // periodic checkpoint
-    int polish;                     // long-running shrink search
+    double time_limit_sec;
+    double checkpoint_every_sec;
+    int polish;
 
     double min_shrink;
     double max_shrink;
     double target_success;
     int trials_polish;
+
+    int trials_bracket;
+    int trials_bisect;
+
+    uint64_t run_id;
+    char out_prefix[128];
 } Config;
+
+static void default_out_prefix(char *buf, size_t n) {
+    // Prefer SLURM ids if available
+    const char *job = getenv("SLURM_JOB_ID");
+    const char *arr = getenv("SLURM_ARRAY_TASK_ID");
+    pid_t pid = getpid();
+
+    if (job && arr) snprintf(buf, n, "job%s_task%s_pid%d", job, arr, (int)pid);
+    else if (job)  snprintf(buf, n, "job%s_pid%d", job, (int)pid);
+    else           snprintf(buf, n, "run_pid%d", (int)pid);
+}
 
 static Config parse_args(int argc, char **argv) {
     if (argc < 2) { usage(argv[0]); exit(1); }
@@ -1293,10 +1191,9 @@ static Config parse_args(int argc, char **argv) {
     cfg.N = atoi(argv[1]);
     if (cfg.N <= 0) { usage(argv[0]); exit(1); }
 
-    cfg.seed = (uint64_t)time(NULL);
+    cfg.seed = 12345ULL;
     cfg.init_path = NULL;
     cfg.demo = 0;
-    cfg.threads = -1;
 
     cfg.time_limit_sec = 0.0;
     cfg.checkpoint_every_sec = 600.0;
@@ -1307,15 +1204,20 @@ static Config parse_args(int argc, char **argv) {
     cfg.target_success = 0.35;
     cfg.trials_polish = 5;
 
+    cfg.trials_bracket = 10;
+    cfg.trials_bisect  = 7;
+
+    cfg.run_id = 0;
+    default_out_prefix(cfg.out_prefix, sizeof(cfg.out_prefix));
+
     if (argc >= 3 && argv[2][0] != '-') {
         cfg.seed = (uint64_t)strtoull(argv[2], NULL, 10);
-        if (cfg.seed == 0) cfg.seed = (uint64_t)time(NULL);
+        if (cfg.seed == 0) cfg.seed = 12345ULL;
     }
 
     for (int a = 2; a < argc; a++) {
         if (streq(argv[a], "--demo")) cfg.demo = 1;
         else if (streq(argv[a], "--init") && a + 1 < argc) { cfg.init_path = argv[a + 1]; a++; }
-        else if (streq(argv[a], "--threads") && a + 1 < argc) { cfg.threads = atoi(argv[a + 1]); a++; }
         else if (streq(argv[a], "--time_limit") && a + 1 < argc) { cfg.time_limit_sec = atof(argv[a + 1]); a++; }
         else if (streq(argv[a], "--checkpoint_every") && a + 1 < argc) { cfg.checkpoint_every_sec = atof(argv[a + 1]); a++; }
         else if (streq(argv[a], "--polish")) cfg.polish = 1;
@@ -1324,6 +1226,13 @@ static Config parse_args(int argc, char **argv) {
         else if (streq(argv[a], "--max_shrink") && a + 1 < argc) { cfg.max_shrink = atof(argv[a + 1]); a++; }
         else if (streq(argv[a], "--target_success") && a + 1 < argc) { cfg.target_success = atof(argv[a + 1]); a++; }
         else if (streq(argv[a], "--trials_polish") && a + 1 < argc) { cfg.trials_polish = atoi(argv[a + 1]); a++; }
+        else if (streq(argv[a], "--trials_bracket") && a + 1 < argc) { cfg.trials_bracket = atoi(argv[a + 1]); a++; }
+        else if (streq(argv[a], "--trials_bisect") && a + 1 < argc) { cfg.trials_bisect = atoi(argv[a + 1]); a++; }
+        else if (streq(argv[a], "--run_id") && a + 1 < argc) { cfg.run_id = (uint64_t)strtoull(argv[a + 1], NULL, 10); a++; }
+        else if (streq(argv[a], "--out_prefix") && a + 1 < argc) {
+            snprintf(cfg.out_prefix, sizeof(cfg.out_prefix), "%s", argv[a + 1]);
+            a++;
+        }
         else if (argv[a][0] == '-') {
             fprintf(stderr, "Unknown/invalid arg: %s\n", argv[a]);
             usage(argv[0]);
@@ -1337,6 +1246,8 @@ static Config parse_args(int argc, char **argv) {
     if (cfg.target_success < 0.05) cfg.target_success = 0.05;
     if (cfg.target_success > 0.95) cfg.target_success = 0.95;
     if (cfg.trials_polish < 1) cfg.trials_polish = 1;
+    if (cfg.trials_bracket < 1) cfg.trials_bracket = 1;
+    if (cfg.trials_bisect < 1) cfg.trials_bisect = 1;
 
     return cfg;
 }
@@ -1346,43 +1257,24 @@ static Config parse_args(int argc, char **argv) {
 int main(int argc, char **argv) {
     Config cfg = parse_args(argc, argv);
 
-#ifdef _OPENMP
-    if (cfg.threads > 0) omp_set_num_threads(cfg.threads);
-#endif
-
     ensure_dir("csv");
     ensure_dir("img");
 
     RNG rng;
-    rng_seed(&rng, cfg.seed);
+    rng_seed(&rng, make_trial_seed(cfg.seed, cfg.run_id, 0));
 
     State s = state_alloc(cfg.N);
 
-    // ---- N=1 shortcut ----
-    if (cfg.N == 1) {
-        solve_N1_bounding_box(&s);
-        Totals t = compute_totals_full_grid(&s);
-        double feas = feasibility_metric(&t);
-
-        char csv_path[256], svg_path[256];
-        snprintf(csv_path, sizeof(csv_path), "csv/best_polys_N%03d.csv", cfg.N);
-        snprintf(svg_path, sizeof(svg_path), "img/best_N%03d.svg", cfg.N);
-
-        printf("N=1 bounding-box solution: L=%.12g feas=%.3e\n", s.L, feas);
-        write_polys_csv(csv_path, &s, feas);
-        write_best_svg(svg_path, &s, feas, 1100, 1100, 40.0);
-
-        state_free(&s);
-        return 0;
-    }
-
     // ---- Area lower bound ----
     const double poly_area = base_polygon_area();
-    const double area_lb = sqrt((double)cfg.N * poly_area);
-    const double area_lb_infeas = area_lb * (1.0 - 1e-6);
+    const double L_area = sqrt((double)cfg.N * poly_area);       // sqrt(N * area(poly))
+    const double L_area_infeas = L_area * (1.0 - 1e-9);          // provably infeasible for L <= this
+
+    printf("prefix=%s run_id=%llu seed=%llu\n", cfg.out_prefix,
+           (unsigned long long)cfg.run_id, (unsigned long long)cfg.seed);
 
     printf("Area bound: area(poly)=%.12g  sqrt(N*area)=%.12g  (provably infeasible L<=%.12g)\n",
-           poly_area, area_lb, area_lb_infeas);
+           poly_area, L_area, L_area_infeas);
 
     // ---- Initial L and layout ----
     int cols = (int)ceil(sqrt((double)cfg.N));
@@ -1390,7 +1282,6 @@ int main(int argc, char **argv) {
 
     double L_grid = 0.0;
     grid_init_layout(&s, cols, rows, 0.0, &L_grid);
-
     s.L = 1.15 * L_grid;
 
     // If init is provided: load it and (optionally) adopt the L in its header
@@ -1432,10 +1323,8 @@ int main(int argc, char **argv) {
     A.iters = 70000;
     A.T_start = 0.30;
     A.T_end   = 3e-4;
-
     A.step_xy_start = 1.0;
     A.step_th_start = 0.35;
-
     A.adapt_window = 1500;
     A.acc_low  = 0.25;
     A.acc_high = 0.55;
@@ -1445,14 +1334,12 @@ int main(int argc, char **argv) {
     A.step_xy_max = 2.0;
     A.step_th_min = 1e-4;
     A.step_th_max = 1.0;
-
     A.lambda_start = 1e2;
     A.mu_start     = 1e2;
     A.ramp_every   = 0;
     A.ramp_factor  = 1.0;
     A.lambda_max   = 1e8;
     A.mu_max       = 1e8;
-
     A.p_reinsert = 0.02;
     A.p_rotmix   = 0.30;
     A.log_every  = A.iters / 6;
@@ -1461,10 +1348,8 @@ int main(int argc, char **argv) {
     B.iters = 35000;
     B.T_start = 0.06;
     B.T_end   = 1e-6;
-
     B.step_xy_start = 0.45;
     B.step_th_start = 0.18;
-
     B.adapt_window = 1500;
     B.acc_low  = 0.10;
     B.acc_high = 0.30;
@@ -1474,21 +1359,19 @@ int main(int argc, char **argv) {
     B.step_xy_max = 1.0;
     B.step_th_min = 1e-5;
     B.step_th_max = 0.6;
-
     B.lambda_start = 1e3;
     B.mu_start     = 1e3;
     B.ramp_every   = 1200;
     B.ramp_factor  = 1.8;
     B.lambda_max   = 1e8;
     B.mu_max       = 1e8;
-
     B.p_reinsert = 0.005;
     B.p_rotmix   = 0.30;
     B.log_every  = B.iters / 6;
 
     // ---- Demo mode overrides ----
-    int trials_bracket = 10;
-    int trials_bisect  = 7;
+    int trials_bracket = cfg.trials_bracket;
+    int trials_bisect  = cfg.trials_bisect;
 
     if (cfg.demo) {
         A.iters = 12000;
@@ -1510,6 +1393,7 @@ int main(int argc, char **argv) {
     const double warm_safety   = 0.98;
 
     int N = cfg.N;
+
     double *best_cx = (double*)malloc((size_t)N * sizeof(double));
     double *best_cy = (double*)malloc((size_t)N * sizeof(double));
     double *best_th = (double*)malloc((size_t)N * sizeof(double));
@@ -1524,18 +1408,20 @@ int main(int argc, char **argv) {
         !best_high_cx || !best_high_cy || !best_high_th)
     {
         fprintf(stderr, "alloc failed\n");
+        state_free(&s);
         return 1;
     }
 
     printf("=== INITIAL PACK at L=%.6g ===\n", s.L);
     double feas0 = try_pack_at_current_L(&s, &rng, &A, &B, trials_bracket,
+                                         cfg.seed, cfg.run_id,
                                          best_cx, best_cy, best_th, 0);
 
     for (int i = 0; i < N; i++) { s.cx[i] = best_cx[i]; s.cy[i] = best_cy[i]; s.th[i] = best_th[i]; }
     update_all(&s);
     rebuild_grid(&s);
 
-    int feas0_flag = is_feasible(feas0, feas_tol) && !guaranteed_infeasible_by_area(s.L, area_lb);
+    int feas0_flag = is_feasible(feas0, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
 
     printf("Initial result: L=%.12g feas=%.3e (%s)\n",
            s.L, feas0, feas0_flag ? "FEASIBLE" : "INFEASIBLE");
@@ -1554,10 +1440,10 @@ int main(int argc, char **argv) {
         for (int k = 0; k < bracket_max_steps; k++) {
             double L_new = L_curr * shrink_factor;
 
-            if (L_new <= area_lb_infeas) {
-                L_low = area_lb_infeas;
+            if (L_new <= L_area_infeas) {
+                L_low = L_area_infeas;
                 found_infeas = 1;
-                printf("\n=== BRACKET SHRINK: hit provable infeasible area bound. Set L_low=%.12g ===\n", L_low);
+                printf("\n=== BRACKET SHRINK: hit provable area bound. Set L_low=%.12g (provably infeasible) ===\n", L_low);
                 break;
             }
 
@@ -1567,12 +1453,14 @@ int main(int argc, char **argv) {
             scale_positions_for_new_L(&s, L_curr, L_new, warm_safety);
 
             double feas = try_pack_at_current_L(&s, &rng, &A, &B, trials_bracket,
+                                                cfg.seed, cfg.run_id,
                                                 best_cx, best_cy, best_th, 0);
+
             for (int i = 0; i < N; i++) { s.cx[i] = best_cx[i]; s.cy[i] = best_cy[i]; s.th[i] = best_th[i]; }
             update_all(&s);
             rebuild_grid(&s);
 
-            int feasible_flag = is_feasible(feas, feas_tol) && !guaranteed_infeasible_by_area(s.L, area_lb);
+            int feasible_flag = is_feasible(feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
 
             printf("Bracket check: L=%.12g feas=%.3e (%s)\n",
                    s.L, feas, feasible_flag ? "FEASIBLE" : "INFEASIBLE");
@@ -1583,26 +1471,29 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
                 L_curr = s.L;
             } else {
+                // SA-declared infeasible lower bracket. Keep it (tighter than area bound),
+                // but never go below the provable area-infeasible bound.
                 L_low = s.L;
-                if (L_low > area_lb_infeas) L_low = area_lb_infeas;
+                if (L_low < L_area_infeas) L_low = L_area_infeas;
                 found_infeas = 1;
                 break;
             }
         }
 
         if (!found_infeas) {
-            L_low = area_lb_infeas;
-            printf("\nWARNING: did not find infeasible by SA shrinking; using provably infeasible L_low=%.12g\n", L_low);
+            L_low = L_area_infeas;
+            printf("\nWARNING: did not find SA-infeasible by shrinking; using provably infeasible L_low=%.12g\n", L_low);
         }
 
     } else {
-        L_low = area_lb_infeas;
+        // Initial infeasible: lower bracket at provable bound, then grow until feasible.
+        L_low = L_area_infeas;
         L_curr = s.L;
 
         int found_feas = 0;
         for (int k = 0; k < bracket_max_steps; k++) {
             double L_new = L_curr * grow_factor;
-            if (L_new < area_lb * 1.01) L_new = area_lb * 1.01;
+            if (L_new < L_area * 1.01) L_new = L_area * 1.01;
 
             printf("\n=== BRACKET GROW: L=%.12g -> %.12g ===\n", L_curr, L_new);
 
@@ -1610,12 +1501,14 @@ int main(int argc, char **argv) {
             scale_positions_for_new_L(&s, L_curr, L_new, warm_safety);
 
             double feas = try_pack_at_current_L(&s, &rng, &A, &B, trials_bracket,
+                                                cfg.seed, cfg.run_id,
                                                 best_cx, best_cy, best_th, 0);
+
             for (int i = 0; i < N; i++) { s.cx[i] = best_cx[i]; s.cy[i] = best_cy[i]; s.th[i] = best_th[i]; }
             update_all(&s);
             rebuild_grid(&s);
 
-            int feasible_flag = is_feasible(feas, feas_tol) && !guaranteed_infeasible_by_area(s.L, area_lb);
+            int feasible_flag = is_feasible(feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
 
             printf("Bracket check: L=%.12g feas=%.3e (%s)\n",
                    s.L, feas, feasible_flag ? "FEASIBLE" : "INFEASIBLE");
@@ -1638,19 +1531,22 @@ int main(int argc, char **argv) {
     }
 
     if (L_low >= L_high) {
-        double new_high = fmax(L_high, area_lb * 1.01);
+        double new_high = fmax(L_high, L_area * 1.01);
         printf("\nWARNING: L_low>=L_high after bracketing. Adjusting L_high to %.12g and retrying feasibility.\n", new_high);
 
         double old = s.L;
         s.L = new_high;
         scale_positions_for_new_L(&s, old, s.L, warm_safety);
 
-        double feas = try_pack_at_current_L(&s, &rng, &A, &B, trials_bracket, best_cx, best_cy, best_th, 0);
+        double feas = try_pack_at_current_L(&s, &rng, &A, &B, trials_bracket,
+                                            cfg.seed, cfg.run_id,
+                                            best_cx, best_cy, best_th, 0);
+
         for (int i = 0; i < N; i++) { s.cx[i] = best_cx[i]; s.cy[i] = best_cy[i]; s.th[i] = best_th[i]; }
         update_all(&s);
         rebuild_grid(&s);
 
-        int feasible_flag = is_feasible(feas, feas_tol) && !guaranteed_infeasible_by_area(s.L, area_lb);
+        int feasible_flag = is_feasible(feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
         if (!feasible_flag) {
             fprintf(stderr, "ERROR: cannot establish a valid feasible upper bracket.\n");
             state_free(&s);
@@ -1661,12 +1557,13 @@ int main(int argc, char **argv) {
         best_feas_high = feas;
         for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
 
-        L_low = area_lb_infeas;
+        L_low = L_area_infeas;
     }
 
     printf("\n=== BRACKET FOUND ===\n");
-    printf("L_low  (provably infeasible) = %.12g\n", L_low);
-    printf("L_high (feasible)            = %.12g  (feas=%.3e)\n", L_high, best_feas_high);
+    printf("L_area_infeas (provably infeasible) = %.12g\n", L_area_infeas);
+    printf("L_low        (lower bracket)        = %.12g%s\n", L_low, (L_low <= L_area_infeas ? " (provable)" : " (SA-infeasible)"));
+    printf("L_high       (feasible)             = %.12g  (feas=%.3e)\n", L_high, best_feas_high);
 
     // ---------------- Bisection ----------------
     double L_prev_feas = L_high;
@@ -1679,7 +1576,7 @@ int main(int argc, char **argv) {
     for (int it = 0; it < bisect_steps; it++) {
         double L_mid = 0.5 * (L_low + L_high);
 
-        if (guaranteed_infeasible_by_area(L_mid, area_lb)) {
+        if (provably_infeasible_by_area(L_mid, L_area_infeas)) {
             L_low = L_mid;
             printf("\n=== BISECT %d/%d: mid=%.12g is provably infeasible by area; update L_low ===\n",
                    it + 1, bisect_steps, L_mid);
@@ -1693,13 +1590,14 @@ int main(int argc, char **argv) {
         scale_positions_for_new_L(&s, L_prev_feas, L_mid, warm_safety);
 
         double feas = try_pack_at_current_L(&s, &rng, &A, &B, trials_bisect,
+                                            cfg.seed, cfg.run_id,
                                             best2_cx, best2_cy, best2_th, 0);
 
         for (int i = 0; i < N; i++) { s.cx[i] = best2_cx[i]; s.cy[i] = best2_cy[i]; s.th[i] = best2_th[i]; }
         update_all(&s);
         rebuild_grid(&s);
 
-        int feasible_flag = is_feasible(feas, feas_tol) && !guaranteed_infeasible_by_area(s.L, area_lb);
+        int feasible_flag = is_feasible(feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
 
         printf("Mid result: L=%.12g feas=%.3e (%s)\n",
                s.L, feas, feasible_flag ? "FEASIBLE" : "INFEASIBLE");
@@ -1712,6 +1610,7 @@ int main(int argc, char **argv) {
         } else {
             L_low = L_mid;
 
+            // restore best feasible upper
             s.L = L_high;
             for (int i = 0; i < N; i++) { s.cx[i] = best_high_cx[i]; s.cy[i] = best_high_cy[i]; s.th[i] = best_high_th[i]; }
             update_all(&s);
@@ -1735,35 +1634,34 @@ int main(int argc, char **argv) {
     // Always write current best after bisection
     {
         char csv_path[256], svg_path[256];
-        snprintf(csv_path, sizeof(csv_path), "csv/best_polys_N%03d.csv", cfg.N);
-        snprintf(svg_path, sizeof(svg_path), "img/best_N%03d.svg", cfg.N);
-        write_polys_csv(csv_path, &s, final_feas);
-        write_best_svg(svg_path, &s, final_feas, 1100, 1100, 40.0);
+        snprintf(csv_path, sizeof(csv_path), "csv/%s_best_polys_N%03d.csv", cfg.out_prefix, cfg.N);
+        snprintf(svg_path, sizeof(svg_path), "img/%s_best_N%03d.svg", cfg.out_prefix, cfg.N);
+        write_polys_csv(csv_path, &s, final_feas, cfg.seed, cfg.run_id, cfg.out_prefix);
+        write_best_svg(svg_path, &s, final_feas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
         printf("Wrote best configuration to %s and %s\n", csv_path, svg_path);
     }
 
-    // ---------------- Long-running shrink search (“leave running”) ----------------
-    // Goal: keep trying to reduce L below current best, forever (or until time_limit).
-    // Adaptive shrink step 'eps' adjusts based on success rate.
+    // ---------------- Long-running shrink search ----------------
     double start_time = now_seconds();
     double last_ckpt_time = start_time;
 
-    // store best feasible config
     double bestL = s.L;
     double bestFeas = final_feas;
 
-    // A consistent “best so far” snapshot buffers
     double *best_pack_cx = (double*)malloc((size_t)N * sizeof(double));
     double *best_pack_cy = (double*)malloc((size_t)N * sizeof(double));
     double *best_pack_th = (double*)malloc((size_t)N * sizeof(double));
-    if (!best_pack_cx || !best_pack_cy || !best_pack_th) { fprintf(stderr, "alloc failed\n"); return 1; }
-    for (int i = 0; i < N; i++) { best_pack_cx[i] = s.cx[i]; best_pack_cy[i] = s.cy[i]; best_pack_th[i] = s.th[i]; }
-
-    // local buffers for polish attempts
     double *tmp_cx = (double*)malloc((size_t)N * sizeof(double));
     double *tmp_cy = (double*)malloc((size_t)N * sizeof(double));
     double *tmp_th = (double*)malloc((size_t)N * sizeof(double));
-    if (!tmp_cx || !tmp_cy || !tmp_th) { fprintf(stderr, "alloc failed\n"); return 1; }
+
+    if (!best_pack_cx || !best_pack_cy || !best_pack_th || !tmp_cx || !tmp_cy || !tmp_th) {
+        fprintf(stderr, "alloc failed\n");
+        state_free(&s);
+        return 1;
+    }
+
+    for (int i = 0; i < N; i++) { best_pack_cx[i] = s.cx[i]; best_pack_cy[i] = s.cy[i]; best_pack_th[i] = s.th[i]; }
 
     if (!cfg.polish) {
         printf("\nPolish disabled (--no_polish). Exiting after bisection.\n");
@@ -1778,10 +1676,10 @@ int main(int argc, char **argv) {
 
     printf("\n=== POLISH / LONG-RUN SHRINK SEARCH ===\n");
     printf("Running until killed%s.\n", (cfg.time_limit_sec > 0.0 ? " or time_limit" : ""));
-    printf("Checkpoint every %.1f sec to csv/checkpoint_N%03d.csv and img/checkpoint_N%03d.svg\n",
-           cfg.checkpoint_every_sec, cfg.N, cfg.N);
+    printf("Checkpoint every %.1f sec to csv/%s_checkpoint_N%03d.csv and img/%s_checkpoint_N%03d.svg\n",
+           cfg.checkpoint_every_sec, cfg.out_prefix, cfg.N, cfg.out_prefix, cfg.N);
 
-    double eps = fmin(fmax(5e-4, cfg.min_shrink), cfg.max_shrink); // initial fractional shrink
+    double eps = fmin(fmax(5e-4, cfg.min_shrink), cfg.max_shrink);
     int attempt = 0;
     int success_in_window = 0;
     int total_in_window = 0;
@@ -1794,19 +1692,17 @@ int main(int argc, char **argv) {
             break;
         }
 
-        // periodic checkpoint (best so far)
         if ((tnow - last_ckpt_time) >= cfg.checkpoint_every_sec) {
-            // restore best state into s for writing
             s.L = bestL;
             for (int i = 0; i < N; i++) { s.cx[i] = best_pack_cx[i]; s.cy[i] = best_pack_cy[i]; s.th[i] = best_pack_th[i]; }
             update_all(&s);
             rebuild_grid(&s);
 
             char ccsv[256], csvg[256];
-            snprintf(ccsv, sizeof(ccsv), "csv/checkpoint_N%03d.csv", cfg.N);
-            snprintf(csvg, sizeof(csvg), "img/checkpoint_N%03d.svg", cfg.N);
-            write_polys_csv(ccsv, &s, bestFeas);
-            write_best_svg(csvg, &s, bestFeas, 1100, 1100, 40.0);
+            snprintf(ccsv, sizeof(ccsv), "csv/%s_checkpoint_N%03d.csv", cfg.out_prefix, cfg.N);
+            snprintf(csvg, sizeof(csvg), "img/%s_checkpoint_N%03d.svg", cfg.out_prefix, cfg.N);
+            write_polys_csv(ccsv, &s, bestFeas, cfg.seed, cfg.run_id, cfg.out_prefix);
+            write_best_svg(csvg, &s, bestFeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
 
             printf("[ckpt] t=%.0fs bestL=%.12g bestFeas=%.3e eps=%.3g\n",
                    (tnow - start_time), bestL, bestFeas, eps);
@@ -1814,61 +1710,70 @@ int main(int argc, char **argv) {
             last_ckpt_time = tnow;
         }
 
-        // do not go below area bound
         double L_try = bestL * (1.0 - eps);
-        if (L_try <= area_lb * 1.000001) {
-            // very close to necessary bound; keep searching with smaller steps
+        if (L_try <= L_area * 1.000001) {
             eps *= 0.5;
             if (eps < cfg.min_shrink) eps = cfg.min_shrink;
-            // If we are truly at the bound, this can run forever; that is intended.
+            continue;
+        }
+
+        if (provably_infeasible_by_area(L_try, L_area_infeas)) {
+            eps *= 0.5;
+            if (eps < cfg.min_shrink) eps = cfg.min_shrink;
             continue;
         }
 
         attempt++;
 
-        // start from best and scale down into candidate L_try
-        s.L = L_try;
+        // warm start from current best, then scale down
+        s.L = bestL;
         for (int i = 0; i < N; i++) { s.cx[i] = best_pack_cx[i]; s.cy[i] = best_pack_cy[i]; s.th[i] = best_pack_th[i]; }
         update_all(&s);
         rebuild_grid(&s);
-        scale_positions_for_new_L(&s, bestL, L_try, warm_safety);
 
-        // run SA at L_try
+        // now shrink L and scale positions once
+        {
+            double oldL = bestL;
+            s.L = L_try;
+            scale_positions_for_new_L(&s, oldL, L_try, warm_safety);
+        }
+
+        // deterministic reseed per polish attempt
+        uint64_t polish_seed = make_trial_seed(cfg.seed, cfg.run_id, 1000000ULL + (uint64_t)attempt);
+        rng_seed(&rng, polish_seed);
+
         double feas = try_pack_at_current_L(&s, &rng, &A, &B, cfg.trials_polish,
+                                            cfg.seed ^ 0xA5A5A5A5A5A5A5A5ULL, cfg.run_id,
                                             tmp_cx, tmp_cy, tmp_th, 0);
 
-        int feasible_flag = is_feasible(feas, feas_tol) && !guaranteed_infeasible_by_area(L_try, area_lb);
+        int feasible_flag = is_feasible(feas, feas_tol) && !provably_infeasible_by_area(L_try, L_area_infeas);
 
         total_in_window++;
         if (feasible_flag) success_in_window++;
 
         if (feasible_flag) {
-            // accept improvement
             bestL = L_try;
             bestFeas = feas;
             for (int i = 0; i < N; i++) { best_pack_cx[i] = tmp_cx[i]; best_pack_cy[i] = tmp_cy[i]; best_pack_th[i] = tmp_th[i]; }
 
-            // also persist “best” files immediately on improvement
             s.L = bestL;
             for (int i = 0; i < N; i++) { s.cx[i] = best_pack_cx[i]; s.cy[i] = best_pack_cy[i]; s.th[i] = best_pack_th[i]; }
             update_all(&s);
             rebuild_grid(&s);
 
             char bestcsv[256], bestsvg[256];
-            snprintf(bestcsv, sizeof(bestcsv), "csv/best_polys_N%03d.csv", cfg.N);
-            snprintf(bestsvg, sizeof(bestsvg), "img/best_N%03d.svg", cfg.N);
-            write_polys_csv(bestcsv, &s, bestFeas);
-            write_best_svg(bestsvg, &s, bestFeas, 1100, 1100, 40.0);
+            snprintf(bestcsv, sizeof(bestcsv), "csv/%s_best_polys_N%03d.csv", cfg.out_prefix, cfg.N);
+            snprintf(bestsvg, sizeof(bestsvg), "img/%s_best_N%03d.svg", cfg.out_prefix, cfg.N);
+            write_polys_csv(bestcsv, &s, bestFeas, cfg.seed, cfg.run_id, cfg.out_prefix);
+            write_best_svg(bestsvg, &s, bestFeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
 
             printf("[improve] attempt=%d bestL=%.12g feas=%.3e eps=%.3g\n",
                    attempt, bestL, bestFeas, eps);
         }
 
-        // adapt eps based on success rate in window
         if (total_in_window >= WINDOW) {
             double rate = (double)success_in_window / (double)total_in_window;
 
-            // If too easy, increase eps (try larger jumps); if too hard, decrease eps.
             if (rate > cfg.target_success + 0.15) eps *= 1.25;
             else if (rate < cfg.target_success - 0.15) eps *= 0.80;
             else if (rate < cfg.target_success) eps *= 0.93;
@@ -1896,17 +1801,16 @@ int main(int argc, char **argv) {
 
     {
         char bestcsv[256], bestsvg[256];
-        snprintf(bestcsv, sizeof(bestcsv), "csv/best_polys_N%03d.csv", cfg.N);
-        snprintf(bestsvg, sizeof(bestsvg), "img/best_N%03d.svg", cfg.N);
-        write_polys_csv(bestcsv, &s, bfeas);
-        write_best_svg(bestsvg, &s, bfeas, 1100, 1100, 40.0);
+        snprintf(bestcsv, sizeof(bestcsv), "csv/%s_best_polys_N%03d.csv", cfg.out_prefix, cfg.N);
+        snprintf(bestsvg, sizeof(bestsvg), "img/%s_best_N%03d.svg", cfg.out_prefix, cfg.N);
+        write_polys_csv(bestcsv, &s, bfeas, cfg.seed, cfg.run_id, cfg.out_prefix);
+        write_best_svg(bestsvg, &s, bfeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
         printf("Wrote best configuration to %s and %s\n", bestcsv, bestsvg);
     }
 
     free(best_cx); free(best_cy); free(best_th);
     free(best2_cx); free(best2_cy); free(best2_th);
     free(best_high_cx); free(best_high_cy); free(best_high_th);
-
     free(best_pack_cx); free(best_pack_cy); free(best_pack_th);
     free(tmp_cx); free(tmp_cy); free(tmp_th);
 
