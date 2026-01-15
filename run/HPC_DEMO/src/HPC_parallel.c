@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -88,6 +89,8 @@ static void usage(const char *argv0) {
         argv0
     );
 }
+
+
 
 // ---------------- RNG (SplitMix64 + xorshift64*) ----------------
 
@@ -880,6 +883,9 @@ static double cooling_from_range(double T_start, double T_end, int iters) {
     return exp(log(T_end / T_start) / (double)iters);
 }
 
+/* Forward-declare stop flag so hot-path can cheaply check it here. */
+extern volatile sig_atomic_t g_stop_requested;
+
 static void run_phase(State *s, Totals *tot, Weights *w, RNG *rng,
                       const PhaseParams *pp,
                       double *best_feas_io, double *best_cx, double *best_cy, double *best_th,
@@ -903,6 +909,15 @@ static void run_phase(State *s, Totals *tot, Weights *w, RNG *rng,
     if (log_every < 1) log_every = 1;
 
     for (int t = 0; t < pp->iters; t++) {
+        /* Coarse stop check: test the global stop flag rarely (every ~8192 iters).
+           This avoids long blocking inside SA phases when Slurm sends SIGTERM. */
+        if ((t & 0x1FFF) == 0) {
+            if (g_stop_requested) {
+                /* Do not perform I/O or heavy work here; return to caller so
+                   outer-phase boundaries can flush and exit cleanly. */
+                break;
+            }
+        }
         if (pp->ramp_every > 0 && t > 0 && (t % pp->ramp_every) == 0) {
             w->lambda_ov *= pp->ramp_factor;
             w->mu_out    *= pp->ramp_factor;
@@ -1173,6 +1188,95 @@ typedef struct {
     char out_prefix[128];
 } Config;
 
+// ---------------- graceful termination (SIGTERM/SIGINT) ----------------
+
+volatile sig_atomic_t g_stop_requested = 0;
+
+static void on_signal_request_stop(int sig) {
+    (void)sig;
+    g_stop_requested = 1;
+}
+
+// Snapshot of "best known solution" to flush on termination.
+// We store bestL/bestFeas and a copy of cx/cy/th for safety.
+static int g_best_ready = 0;
+static int g_best_N = 0;
+static double g_bestL = 0.0;
+static double g_bestFeas = 1e300;
+static uint64_t g_best_seed = 0;
+static uint64_t g_best_run_id = 0;
+static char g_best_prefix[128] = {0};
+
+static double *g_best_cx = NULL;
+static double *g_best_cy = NULL;
+static double *g_best_th = NULL;
+
+static void best_snapshot_init(int N, const Config *cfg) {
+    g_best_N = N;
+    g_best_seed = cfg->seed;
+    g_best_run_id = cfg->run_id;
+    snprintf(g_best_prefix, sizeof(g_best_prefix), "%s", cfg->out_prefix);
+
+    g_best_cx = (double*)malloc((size_t)N * sizeof(double));
+    g_best_cy = (double*)malloc((size_t)N * sizeof(double));
+    g_best_th = (double*)malloc((size_t)N * sizeof(double));
+    if (!g_best_cx || !g_best_cy || !g_best_th) {
+        fprintf(stderr, "ERROR: best_snapshot_init alloc failed\n");
+        exit(1);
+    }
+    g_best_ready = 0;
+}
+
+static void best_snapshot_update(const State *s, double bestFeas) {
+    if (!g_best_cx) return;
+    g_bestL = s->L;
+    g_bestFeas = bestFeas;
+    for (int i = 0; i < s->N; i++) {
+        g_best_cx[i] = s->cx[i];
+        g_best_cy[i] = s->cy[i];
+        g_best_th[i] = s->th[i];
+    }
+    g_best_ready = 1;
+}
+
+static void best_snapshot_flush_files(State *s) {
+    if (!g_best_ready || !g_best_cx) return;
+
+    // Restore best snapshot into state
+    s->L = g_bestL;
+    for (int i = 0; i < s->N; i++) {
+        s->cx[i] = g_best_cx[i];
+        s->cy[i] = g_best_cy[i];
+        s->th[i] = g_best_th[i];
+    }
+    update_all(s);
+    rebuild_grid(s);
+
+    char bestcsv[256], bestsvg[256], ckcsv[256], cksvg[256];
+    snprintf(bestcsv, sizeof(bestcsv), "csv/%s_best_polys_N%03d.csv", g_best_prefix, s->N);
+    snprintf(bestsvg, sizeof(bestsvg), "img/%s_best_N%03d.svg",      g_best_prefix, s->N);
+    snprintf(ckcsv,  sizeof(ckcsv),  "csv/%s_checkpoint_N%03d.csv", g_best_prefix, s->N);
+    snprintf(cksvg,  sizeof(cksvg),  "img/%s_checkpoint_N%03d.svg", g_best_prefix, s->N);
+
+    // Write both "best" and "checkpoint" so your reduction scripts can rely on either.
+    write_polys_csv(bestcsv, s, g_bestFeas, g_best_seed, g_best_run_id, g_best_prefix);
+    write_best_svg(bestsvg, s, g_bestFeas, 1100, 1100, 40.0, g_best_prefix, g_best_run_id);
+    write_polys_csv(ckcsv,  s, g_bestFeas, g_best_seed, g_best_run_id, g_best_prefix);
+    write_best_svg(cksvg,  s, g_bestFeas, 1100, 1100, 40.0, g_best_prefix, g_best_run_id);
+
+    fflush(stdout);
+    fflush(stderr);
+}
+
+static void maybe_stop_and_flush(State *s, const char *where) {
+    if (!g_stop_requested) return;
+
+    fprintf(stderr, "\n[signal] stop requested at: %s\n", (where ? where : "unknown"));
+    best_snapshot_flush_files(s);
+    fprintf(stderr, "[signal] flushed best snapshot and exiting.\n");
+    exit(0);
+}
+
 static void default_out_prefix(char *buf, size_t n) {
     // Prefer SLURM ids if available
     const char *job = getenv("SLURM_JOB_ID");
@@ -1257,6 +1361,10 @@ static Config parse_args(int argc, char **argv) {
 int main(int argc, char **argv) {
     Config cfg = parse_args(argc, argv);
 
+    // Install signal handlers (Slurm sends SIGTERM on time limit; user may send SIGINT).
+    signal(SIGTERM, on_signal_request_stop);
+    signal(SIGINT,  on_signal_request_stop);
+
     ensure_dir("csv");
     ensure_dir("img");
 
@@ -1264,6 +1372,9 @@ int main(int argc, char **argv) {
     rng_seed(&rng, make_trial_seed(cfg.seed, cfg.run_id, 0));
 
     State s = state_alloc(cfg.N);
+
+    // Initialize snapshot storage for emergency flush.
+    best_snapshot_init(cfg.N, &cfg);
 
     // ---- Area lower bound ----
     const double poly_area = base_polygon_area();
@@ -1421,6 +1532,9 @@ int main(int argc, char **argv) {
     update_all(&s);
     rebuild_grid(&s);
 
+    best_snapshot_update(&s, feas0);
+    maybe_stop_and_flush(&s, "after initial pack");
+
     int feas0_flag = is_feasible(feas0, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
 
     printf("Initial result: L=%.12g feas=%.3e (%s)\n",
@@ -1438,6 +1552,7 @@ int main(int argc, char **argv) {
 
         int found_infeas = 0;
         for (int k = 0; k < bracket_max_steps; k++) {
+            maybe_stop_and_flush(&s, "bracket loop (top)");
             double L_new = L_curr * shrink_factor;
 
             if (L_new <= L_area_infeas) {
@@ -1469,6 +1584,7 @@ int main(int argc, char **argv) {
                 L_high = s.L;
                 best_feas_high = feas;
                 for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
+                best_snapshot_update(&s, feas);
                 L_curr = s.L;
             } else {
                 // SA-declared infeasible lower bracket. Keep it (tighter than area bound),
@@ -1492,6 +1608,8 @@ int main(int argc, char **argv) {
 
         int found_feas = 0;
         for (int k = 0; k < bracket_max_steps; k++) {
+            maybe_stop_and_flush(&s, "bracket grow loop (top)");
+
             double L_new = L_curr * grow_factor;
             if (L_new < L_area * 1.01) L_new = L_area * 1.01;
 
@@ -1517,6 +1635,7 @@ int main(int argc, char **argv) {
                 L_high = s.L;
                 best_feas_high = feas;
                 for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
+                best_snapshot_update(&s, feas);
                 found_feas = 1;
                 break;
             } else {
@@ -1574,6 +1693,7 @@ int main(int argc, char **argv) {
     rebuild_grid(&s);
 
     for (int it = 0; it < bisect_steps; it++) {
+        maybe_stop_and_flush(&s, "bisect loop (top)");
         double L_mid = 0.5 * (L_low + L_high);
 
         if (provably_infeasible_by_area(L_mid, L_area_infeas)) {
@@ -1607,6 +1727,7 @@ int main(int argc, char **argv) {
             L_prev_feas = L_mid;
             best_feas_high = feas;
             for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
+            best_snapshot_update(&s, feas);
         } else {
             L_low = L_mid;
 
@@ -1640,6 +1761,9 @@ int main(int argc, char **argv) {
         write_best_svg(svg_path, &s, final_feas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
         printf("Wrote best configuration to %s and %s\n", csv_path, svg_path);
     }
+
+    best_snapshot_update(&s, final_feas);
+    maybe_stop_and_flush(&s, "after bisection write");
 
     // ---------------- Long-running shrink search ----------------
     double start_time = now_seconds();
@@ -1686,9 +1810,19 @@ int main(int argc, char **argv) {
     const int WINDOW = 20;
 
     while (1) {
+        maybe_stop_and_flush(&s, "polish loop (top)");
         double tnow = now_seconds();
         if (cfg.time_limit_sec > 0.0 && (tnow - start_time) >= cfg.time_limit_sec) {
             printf("\n[stop] time_limit reached (%.1f sec)\n", cfg.time_limit_sec);
+            /* Restore the canonical best-pack state before snapshot/flush so
+               we always persist the true best configuration we've been tracking. */
+            s.L = bestL;
+            for (int i = 0; i < N; i++) { s.cx[i] = best_pack_cx[i]; s.cy[i] = best_pack_cy[i]; s.th[i] = best_pack_th[i]; }
+            update_all(&s);
+            rebuild_grid(&s);
+
+            best_snapshot_update(&s, bestFeas);
+            best_snapshot_flush_files(&s);
             break;
         }
 
@@ -1769,6 +1903,7 @@ int main(int argc, char **argv) {
 
             printf("[improve] attempt=%d bestL=%.12g feas=%.3e eps=%.3g\n",
                    attempt, bestL, bestFeas, eps);
+                 best_snapshot_update(&s, bestFeas);
         }
 
         if (total_in_window >= WINDOW) {
@@ -1813,6 +1948,10 @@ int main(int argc, char **argv) {
     free(best_high_cx); free(best_high_cy); free(best_high_th);
     free(best_pack_cx); free(best_pack_cy); free(best_pack_th);
     free(tmp_cx); free(tmp_cy); free(tmp_th);
+
+    if (g_best_cx) { free(g_best_cx); g_best_cx = NULL; }
+    if (g_best_cy) { free(g_best_cy); g_best_cy = NULL; }
+    if (g_best_th) { free(g_best_th); g_best_th = NULL; }
 
     state_free(&s);
     return 0;
