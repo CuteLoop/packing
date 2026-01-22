@@ -1,0 +1,4 @@
+time,stage,N,L,feas,seed,run_id,attempt
+1768951104,start,100,1,1e+300,12345,0,0
+1768951111,initial_pack,100,11.5,0,12345,0,0
+1768951112,signal_stop,100,11.155,0,12345,0,0

@@ -1,0 +1,19 @@
+% Minimal shim for algpseudocode.sty to allow basic pseudocode rendering
+\ProvidesPackage{algpseudocode}[2026/01/15 Minimal shim]
+\newenvironment{algpseudocode}[1][]{%
+  \begin{list}{}{\setlength{\leftmargin}{1em}\setlength{\itemsep}{0pt}}%
+}{%
+  \end{list}%
+}
+\newcommand{\State}[1]{\item #1}
+\newcommand{\For}[1]{\item \textbf{for}~#1\begin{list}{}{\setlength{\leftmargin}{1em}}}
+\newcommand{\EndFor}{\end{list}}
+\newcommand{\If}[1]{\item \textbf{if}~#1\begin{list}{}{\setlength{\leftmargin}{1em}}}
+\newcommand{\EndIf}{\end{list}}
+\newcommand{\Else}{\item \textbf{else}}
+\newcommand{\Return}[1]{\item \textbf{return}~#1}
+\newcommand{\Comment}[1]{\hfill\textit{#1}}
+% Basic while support
+\newcommand{\While}[1]{\item \textbf{while}~#1\begin{list}{}{\setlength{\leftmargin}{1em}}}
+\newcommand{\EndWhile}{\end{list}}
+% Basic loop support (EndWhile/EndFor/EndIf already provided)

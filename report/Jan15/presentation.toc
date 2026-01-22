@@ -1,0 +1,8 @@
+\beamer@sectionintoc {1}{Problem}{3}{0}{1}
+\beamer@sectionintoc {2}{Geometry Model}{5}{0}{2}
+\beamer@sectionintoc {3}{Energy and Feasibility}{8}{0}{3}
+\beamer@sectionintoc {4}{Simulated Annealing (Two-Phase)}{10}{0}{4}
+\beamer@sectionintoc {5}{Outer Optimization: Bracket + Bisection}{13}{0}{5}
+\beamer@sectionintoc {6}{Polish: Time-Limited Shrink Search}{17}{0}{6}
+\beamer@sectionintoc {7}{HPC Engineering}{19}{0}{7}
+\beamer@sectionintoc {8}{Results}{21}{0}{8}

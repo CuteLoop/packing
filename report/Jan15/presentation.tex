@@ -1,0 +1,527 @@
+\documentclass[aspectratio=169]{beamer}
+
+% -------------------- Packages --------------------
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% -------------------- Theme --------------------
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+
+% -------------------- Metadata --------------------
+\title[HPC Polygon Packing via SA]{HPC Simulated Annealing for Non-Convex Polygon Packing in a Square}
+\subtitle{Bracketing, Bisection Refinement, and Time-Limited Shrink Polish}
+\author{Joel Amir D. Maldonado T\"anori}
+\institute{Applied Mathematics PhD, University of Arizona}
+\date{\today}
+
+% -------------------- Macros --------------------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\bb}{\mathbf}
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\feas}{\mathrm{feas}}
+\newcommand{\ov}{\mathrm{ov}}
+\newcommand{\out}{\mathrm{out}}
+
+\begin{document}
+
+% -------------------- Title --------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% -------------------- Agenda --------------------
+\begin{frame}{Agenda}
+\begin{enumerate}
+  \item Problem and constraints
+  \item Geometry model: triangulation + SAT + broad-phase rejects
+  \item Energy function, feasibility, and SA moves
+  \item Outer optimizer: bracketing + bisection
+  \item Time-limited polish: adaptive shrink search
+  \item HPC reliability: determinism, checkpoints, SIGTERM flush
+  \item Results / best-solution visuals
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+\section{Problem}
+% =========================================================
+
+\begin{frame}{Problem Statement}
+\textbf{Goal.} Pack $N$ identical copies of a fixed \textbf{non-convex} polygon $P \subset \R^2$ into a square of side length $L$.
+
+\medskip
+\textbf{Decision variables (per instance $i=1,\dots,N$):}
+\[
+(\,c_x^{(i)},\, c_y^{(i)},\, \theta^{(i)}\,) \in \R^2 \times [0,2\pi)
+\]
+where $(c_x^{(i)},c_y^{(i)})$ is translation and $\theta^{(i)}$ is rotation.
+
+\medskip
+\textbf{Constraints.}
+\begin{itemize}
+  \item \textbf{Non-overlap:} interiors of instances are disjoint.
+  \item \textbf{Containment:} each polygon lies inside the square $[-L/2,L/2]^2$.
+\end{itemize}
+
+\medskip
+\textbf{Objective.} Minimize $L$ (tightest feasible packing).
+\end{frame}
+
+\begin{frame}{A Provable Lower Bound (Area Bound)}
+Let $\mathrm{area}(P)$ be the polygon area. Then any feasible packing must satisfy:
+\[
+L^2 \;\ge\; N \cdot \mathrm{area}(P)
+\quad\Rightarrow\quad
+L \;\ge\; \sqrt{N\,\mathrm{area}(P)}.
+\]
+
+\medskip
+In code, we keep a strictly provably infeasible threshold:
+\[
+L_{\text{area}} = \sqrt{N\,\mathrm{area}(P)},\qquad
+L_{\text{area-infeas}} = (1-\varepsilon)\,L_{\text{area}}.
+\]
+
+\medskip
+\textbf{Interpretation.} If $L \le L_{\text{area-infeas}}$, the instance is \textbf{provably infeasible} (no need to run SA).
+\end{frame}
+
+% =========================================================
+\section{Geometry Model}
+% =========================================================
+
+\begin{frame}{Geometry Model: Triangulation + SAT}
+We represent the non-convex polygon $P$ by:
+\begin{itemize}
+  \item A fixed vertex list $\{v_k\}_{k=1}^{N_V}$ in local coordinates.
+  \item A fixed triangulation $\{\Delta_t\}_{t=1}^{N_T}$, each triangle uses indices into the vertex list.
+\end{itemize}
+
+\medskip
+Each instance $i$ produces world vertices:
+\[
+w_k^{(i)} = R(\theta^{(i)})\,v_k + \begin{bmatrix} c_x^{(i)} \\ c_y^{(i)} \end{bmatrix}.
+\]
+
+\medskip
+\textbf{Collision test between instances $(i,j)$:}
+\begin{enumerate}
+  \item Broad-phase AABB overlap
+  \item Broad-phase bounding-circle reject
+  \item Narrow-phase triangle-triangle SAT for all $(t_a,t_b)$
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Broad-Phase Acceleration}
+\textbf{AABB reject.} If axis-aligned bounding boxes do not overlap, polygons cannot overlap.
+
+\medskip
+\textbf{Bounding-circle reject.} Precompute base radius $r$:
+\[
+r = \max_k \|v_k\|_2.
+\]
+If centers are far:
+\[
+\|c^{(i)}-c^{(j)}\|_2 > 2r
+\quad\Rightarrow\quad
+\text{no overlap}.
+\]
+
+\medskip
+\textbf{Uniform grid (spatial hashing).} Each instance belongs to one grid cell; collision checks only consider neighbor cells within a radius based on $2r$.
+
+\medskip
+\textbf{Outcome.} Pairwise overlap checks scale closer to \textit{local neighborhood} interactions rather than $O(N^2)$ in practice.
+\end{frame}
+
+\begin{frame}{Containment Penalty via AABB}
+Containment is enforced through an \textbf{outside penalty} computed from AABB vs. square:
+\[
+\out_i(L) = \sum_{\text{violations}} d^2
+\]
+where $d$ is how far the AABB exceeds $\pm L/2$ in any direction.
+
+\medskip
+\textbf{Benefit.} Cheap to compute, differentiable enough for SA, and effective when combined with increasing penalty weights in Phase B.
+\end{frame}
+
+% =========================================================
+\section{Energy and Feasibility}
+% =========================================================
+
+\begin{frame}{Energy Function and Feasibility Metric}
+We separate the concept of \textbf{energy} (for SA acceptance) from \textbf{feasibility} (for outer logic).
+
+\medskip
+\textbf{Totals:}
+\[
+\ov(L) = \sum_{i<j} \mathrm{overlap\_penalty}(i,j),\qquad
+\out(L) = \sum_{i} \mathrm{outside\_penalty}(i).
+\]
+
+\medskip
+\textbf{Energy (within an SA run at fixed $L$):}
+\[
+\E = \lambda\,\ov + \mu\,\out
+\]
+(with weights scheduled by phase).
+
+\medskip
+\textbf{Feasibility metric:}
+\[
+\feas = \ov + \out.
+\]
+We declare ``feasible'' if $\feas \le \tau$ for a small tolerance $\tau$ and $L$ is not area-provably infeasible.
+\end{frame}
+
+\begin{frame}{Move Set and Incremental Updates}
+Each SA iteration chooses a random index $k$ and applies one of:
+\begin{itemize}
+  \item \textbf{Reinsert (small probability):} randomize $(c_x,c_y,\theta)$ uniformly.
+  \item \textbf{Local jitter:} $(c_x,c_y) \leftarrow (c_x,c_y) + \Delta$ with $\Delta \sim \mathrm{Unif}([-s,s]^2)$.
+  \item \textbf{Rotation mix:} with probability $p_{\text{rot}}$, $\theta \leftarrow \theta + \Delta\theta$.
+\end{itemize}
+
+\medskip
+\textbf{Incremental bookkeeping.} Only terms involving instance $k$ need recomputation:
+\[
+\ov \leftarrow \ov + (\ov_k^{\text{new}} - \ov_k^{\text{old}}),\qquad
+\out \leftarrow \out + (\out_k^{\text{new}} - \out_k^{\text{old}}).
+\]
+
+\medskip
+\textbf{Outcome.} Fast inner loop; suitable for HPC sweeps over many $N$.
+\end{frame}
+
+% =========================================================
+\section{Simulated Annealing (Two-Phase)}
+% =========================================================
+
+\begin{frame}{Two-Phase SA Schedule}
+We use two sequential phases at fixed $L$:
+
+\medskip
+\textbf{Phase A (Explore).}
+\begin{itemize}
+  \item Higher temperature range $T_{\text{start}}\to T_{\text{end}}$
+  \item Larger step sizes
+  \item Moderate penalties $(\lambda,\mu)$
+  \item Purpose: escape poor initializations and reduce gross overlaps/outside
+\end{itemize}
+
+\medskip
+\textbf{Phase B (Enforce).}
+\begin{itemize}
+  \item Lower temperatures
+  \item Smaller step sizes
+  \item \textbf{Ramping} penalties every $K$ iterations: $(\lambda,\mu) \leftarrow \min((\lambda,\mu)\cdot \rho,\ (\lambda_{\max},\mu_{\max}))$
+  \item Purpose: aggressively drive $\feas \to 0$
+\end{itemize}
+\end{frame}
+
+\begin{frame}{SA Acceptance Rule}
+Given current energy $\E$ and proposed energy $\E'$, accept with:
+\[
+\Delta\E = \E' - \E.
+\]
+\[
+\mathbb{P}(\text{accept}) =
+\begin{cases}
+1, & \Delta\E \le 0,\\
+\exp(-\Delta\E / T), & \Delta\E > 0.
+\end{cases}
+\]
+
+\medskip
+\textbf{Key detail.} We track the \textbf{best feasibility} configuration seen in the run:
+\[
+\feas_{\min} = \min_t \feas(t),
+\]
+and restore to that best configuration at the end of the trial.
+\end{frame}
+
+\begin{frame}{Pseudocode: SA Trial at Fixed $L$}
+\begin{algorithm}[H]
+\caption{SA\_Trial($L$)}
+\begin{algpseudocode}[1]
+\State Initialize state $x$ (positions + angles), compute totals $(\ov,\out)$
+\State $x_{\text{best}} \gets x$, $\feas_{\text{best}} \gets \ov+\out$
+\For{phase $\in \{\text{A},\text{B}\}$}
+  \State Set temperature schedule, step sizes, penalty weights $(\lambda,\mu)$
+  \For{$t=1$ to $\text{iters}_\text{phase}$}
+    \State Propose move on one instance $k$, update totals incrementally
+    \State Accept/reject via Metropolis rule
+    \If{accepted and $\ov+\out < \feas_{\text{best}}$}
+      \State $x_{\text{best}} \gets x$, $\feas_{\text{best}} \gets \ov+\out$
+    \EndIf
+    \State Update temperature; adapt step sizes by acceptance rate window
+    \State Ramp penalties in Phase B
+  \EndFor
+\EndFor
+\State Restore $x \gets x_{\text{best}}$
+\State \Return $\feas_{\text{best}}$
+\end{algpseudocode}
+\end{algorithm}
+\end{frame}
+
+% =========================================================
+\section{Outer Optimization: Bracket + Bisection}
+% =========================================================
+
+\begin{frame}{Outer Loop Overview}
+We want the smallest feasible $L$. The outer optimizer proceeds as:
+\begin{enumerate}
+  \item \textbf{Initialize} a conservative $L$ via grid layout (near-square arrangement).
+  \item \textbf{Bracketing:}
+  \begin{itemize}
+    \item If feasible at current $L$, shrink until infeasible to find $[L_{\text{low}},L_{\text{high}}]$.
+    \item If infeasible, grow until feasible.
+  \end{itemize}
+  \item \textbf{Bisection:} refine the bracket to a tight feasible $L$.
+  \item \textbf{Polish:} time-limited stochastic descent shrinking $L$ further.
+\end{enumerate}
+
+\medskip
+\textbf{Reliability constraints.} Area bound prevents invalid brackets; best feasible configuration is carried across $L$ updates via scaling.
+\end{frame}
+
+\begin{frame}{Bracketing Logic (with Area Bound)}
+We maintain:
+\[
+L_{\text{low}} \;\text{(infeasible)},\qquad L_{\text{high}} \;\text{(feasible)}.
+\]
+
+\medskip
+\textbf{Case 1: initial feasible.} Repeatedly try $L \leftarrow \alpha L$ with $\alpha<1$:
+\begin{itemize}
+  \item Stop if $L \le L_{\text{area-infeas}}$ (provably infeasible).
+  \item Otherwise run SA at new $L$.
+  \item If infeasible, set $L_{\text{low}} \leftarrow L$.
+\end{itemize}
+
+\medskip
+\textbf{Case 2: initial infeasible.} Repeatedly try $L \leftarrow \beta L$ with $\beta>1$ until feasible; set $L_{\text{high}}$.
+
+\medskip
+\textbf{Important detail.} We do \emph{not} overwrite an SA-found infeasible lower bracket with the weaker area bound; we keep the tighter information.
+\end{frame}
+
+\begin{frame}{Bisection Refinement}
+Given a valid bracket $L_{\text{low}} < L_{\text{high}}$:
+\[
+L_{\text{mid}} = \tfrac{1}{2}(L_{\text{low}} + L_{\text{high}}).
+\]
+
+\medskip
+\textbf{If $L_{\text{mid}} \le L_{\text{area-infeas}}$:} mark infeasible and set $L_{\text{low}} \leftarrow L_{\text{mid}}$ without SA.
+
+\medskip
+\textbf{Else:}
+\begin{itemize}
+  \item Warm-start by scaling best-feasible configuration from $L_{\text{high}}$ to $L_{\text{mid}}$.
+  \item Run a bounded number of SA trials at $L_{\text{mid}}$.
+  \item If feasible: $L_{\text{high}} \leftarrow L_{\text{mid}}$ (and update best-feasible snapshot).
+  \item Else: $L_{\text{low}} \leftarrow L_{\text{mid}}$ and restore best-feasible state.
+\end{itemize}
+
+\medskip
+After $k$ steps, bracket width shrinks by $2^{-k}$.
+\end{frame}
+
+\begin{frame}{Pseudocode: Bracket + Bisection}
+\begin{algorithm}[H]
+\caption{Minimize $L$ (Bracket + Bisection)}
+\begin{algpseudocode}[1]
+\State Initialize $L$ from grid layout; run SA $\Rightarrow$ feasible?
+\If{feasible}
+  \State $L_{\text{high}} \gets L$
+  \While{not found infeasible}
+    \State $L \gets \alpha L$ (shrink)
+    \If{$L \le L_{\text{area-infeas}}$} \State $L_{\text{low}} \gets L_{\text{area-infeas}}$; \textbf{break} \EndIf
+    \State Run SA at $L$
+    \If{infeasible} \State $L_{\text{low}} \gets L$; \textbf{break} \EndIf
+    \State $L_{\text{high}} \gets L$
+  \EndWhile
+\Else
+  \State $L_{\text{low}} \gets L_{\text{area-infeas}}$
+  \While{not feasible}
+    \State $L \gets \beta L$ (grow); run SA
+  \EndWhile
+  \State $L_{\text{high}} \gets L$
+\EndIf
+\For{$t=1$ to $k$}
+  \State $L_{\text{mid}} \gets (L_{\text{low}} + L_{\text{high}})/2$
+  \If{$L_{\text{mid}} \le L_{\text{area-infeas}}$}
+    \State $L_{\text{low}} \gets L_{\text{mid}}$ \Comment{provably infeasible}
+  \Else
+    \State Run SA at $L_{\text{mid}}$
+    \If{feasible} \State $L_{\text{high}} \gets L_{\text{mid}}$ \Else \State $L_{\text{low}} \gets L_{\text{mid}}$ \EndIf
+  \EndIf
+\EndFor
+\State \Return $L_{\text{high}}$
+\end{algpseudocode}
+\end{algorithm}
+\end{frame}
+
+% =========================================================
+\section{Polish: Time-Limited Shrink Search}
+% =========================================================
+
+\begin{frame}{Polish Stage: Adaptive Shrink Search}
+After bisection, we have a strong feasible configuration at $L^\star$.
+
+\medskip
+\textbf{Idea.} Repeatedly attempt a small shrink:
+\[
+L_{\text{try}} = L^\star (1-\epsilon),
+\]
+warm-start by scaling positions, then run a few SA trials.
+
+\medskip
+\textbf{If feasible:} accept and update best solution.
+
+\medskip
+\textbf{If infeasible:} reject and adjust $\epsilon$.
+
+\medskip
+\textbf{Adaptive control.} Maintain a sliding window of attempts and tune $\epsilon$ toward a target success rate (stochastic descent with backoff).
+\end{frame}
+
+\begin{frame}{Time Limit and Checkpoints}
+For HPC sweeps, polish is time-limited (e.g., 900s = 15 minutes) to guarantee completion.
+
+\medskip
+\textbf{Periodic checkpoints (every $\Delta t$ seconds):}
+\begin{itemize}
+  \item Write \texttt{csv/<prefix>\_checkpoint\_Nxxx.csv}
+  \item Write \texttt{img/<prefix>\_checkpoint\_Nxxx.svg}
+\end{itemize}
+
+\medskip
+\textbf{SIGTERM handling.} If Slurm sends SIGTERM near walltime:
+\begin{itemize}
+  \item Flush \textbf{best snapshot} to both best and checkpoint files.
+  \item Exit cleanly.
+\end{itemize}
+
+\medskip
+\textbf{Outcome.} Even canceled jobs yield usable artifacts.
+\end{frame}
+
+% =========================================================
+\section{HPC Engineering}
+% =========================================================
+
+\begin{frame}{HPC Engineering: Determinism and File Safety}
+\textbf{Deterministic seeds.} Each trial seed derived from:
+\[
+\text{seed} = f(\text{base\_seed},\ \text{run\_id},\ \text{trial\_id})
+\]
+(using SplitMix64 diffusion), ensuring reproducibility across arrays.
+
+\medskip
+\textbf{Unique output prefixes.} For SLURM arrays:
+\[
+\texttt{out\_prefix} = \texttt{N\{N\}\_job\{job\}\_task\{task\}}
+\]
+Prevents file collisions when tasks run concurrently.
+
+\medskip
+\textbf{Compile-on-node option.} Avoid GLIBC mismatch by building on compute nodes (cluster dependent).
+\end{frame}
+
+\begin{frame}{Complexity Notes and Practical Performance}
+\textbf{Theoretical worst case.} Collision evaluation can be heavy, but practical performance is improved by:
+\begin{itemize}
+  \item Uniform grid neighbor enumeration (local pairs)
+  \item AABB + bounding-circle rejects (broad phase)
+  \item Small fixed triangulation size ($N_T$ constant)
+  \item Incremental energy updates per move (only one instance changes)
+\end{itemize}
+
+\medskip
+\textbf{Scaling expectation.} Runtime grows with $N$ mainly due to increased local density and neighbor interactions, not purely $N^2$.
+\end{frame}
+
+% =========================================================
+\section{Results}
+% =========================================================
+
+\begin{frame}{Result Artifacts Produced Per Task}
+For each $N$, the code writes:
+\begin{itemize}
+  \item \texttt{img/<prefix>\_best\_Nxxx.svg}
+  \item \texttt{csv/<prefix>\_best\_polys\_Nxxx.csv}
+  \item \texttt{img/<prefix>\_checkpoint\_Nxxx.svg}
+  \item \texttt{csv/<prefix>\_checkpoint\_Nxxx.csv}
+\end{itemize}
+
+\medskip
+The CSV header includes:
+\begin{itemize}
+  \item prefix, run\_id, seed
+  \item $L$ and best feasibility score
+  \item $N$
+\end{itemize}
+
+\medskip
+\textbf{Recommendation.} For figures, use SVG exports directly in LaTeX (or convert to PDF for best typography).
+\end{frame}
+
+\begin{frame}{Example Best Solutions (Insert Your Figures)}
+\begin{columns}
+\column{0.5\textwidth}
+\begin{figure}
+  \centering
+  % Replace with your actual filename(s)
+  \includegraphics[width=\linewidth]{img/N10_jobXXXX_task10_best_N010.pdf}
+  \caption{Best packing for $N=10$}
+\end{figure}
+
+\column{0.5\textwidth}
+\begin{figure}
+  \centering
+  % Replace with your actual filename(s)
+  \includegraphics[width=\linewidth]{img/N50_jobXXXX_task50_best_N050.pdf}
+  \caption{Best packing for $N=50$}
+\end{figure}
+\end{columns}
+
+\medskip
+\textit{Tip:} If your artifacts are SVG, convert with:
+\[
+\texttt{inkscape --export-type=pdf input.svg -o output.pdf}
+\]
+\end{frame}
+
+\begin{frame}{Summary}
+\begin{itemize}
+  \item Non-convex polygon packing solved with \textbf{two-phase SA} + robust geometry checks.
+  \item \textbf{Area bound} provides provable infeasibility cutoff.
+  \item \textbf{Bracket + bisection} yields a tight feasible $L$ reliably.
+  \item \textbf{Time-limited polish} improves $L$ further under strict HPC budgets.
+  \item Engineering choices ensure \textbf{reproducibility} and \textbf{artifact safety} on Slurm arrays.
+\end{itemize}
+
+\medskip
+\textbf{Next steps:}
+\begin{itemize}
+  \item Aggregate sweep results into an $L^\star(N)$ curve
+  \item Compare against tiling-inspired warm-starts
+  \item Increase SA trials for hard $N$ and perform longer polish on selected cases
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\centering
+\Large Questions?
+\end{frame}
+
+\end{document}

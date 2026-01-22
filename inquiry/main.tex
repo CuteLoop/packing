@@ -1,0 +1,136 @@
+\documentclass[11pt,oneside]{book}
+
+% ==========================================================
+% Basic packages
+% ==========================================================
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage{geometry}
+\geometry{
+  margin=1.1in,
+  headheight=14pt
+}
+
+\usepackage{setspace}
+\onehalfspacing
+
+% ==========================================================
+% Mathematics
+% ==========================================================
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+
+% Theorem environments
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{problem}[theorem]{Problem}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ==========================================================
+% Figures and tables
+% ==========================================================
+
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ==========================================================
+% Algorithms (optional but recommended)
+% Load only if available to allow builds on minimal TeX installs.
+% ==========================================================
+\IfFileExists{algorithm.sty}{%
+  \usepackage{algorithm}
+  \usepackage{algpseudocode}
+}{%
+  % algorithm.sty not found; continue without algorithm floats.
+}
+
+% ==========================================================
+% References
+% ==========================================================
+
+\usepackage[numbers,sort&compress]{natbib}
+
+% ==========================================================
+% Hyperlinks
+% ==========================================================
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+% ==========================================================
+% Custom commands (extend as needed)
+% ==========================================================
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+
+% ==========================================================
+% Front matter
+% ==========================================================
+
+\title{\textbf{Discrete and Continuous Methods for Packing Problems}}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+
+\maketitle
+
+\tableofcontents
+
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+This book develops a unified framework for packing problems,
+combining discrete optimization, graph theory, and continuous
+methods from applied mathematics.
+
+% ==========================================================
+% Main matter
+% ==========================================================
+
+\mainmatter
+
+% ------------------------------------------
+% Chapters
+% ------------------------------------------
+
+\include{chapters/ch01}  % <-- your chapter
+\include{chapters/ch02}  % <-- your chapter
+\include{chapters/ch03}
+\include{chapters/ch04}
+\include{chapters/ch05a}
+\include{chapters/ch05b}
+\include{chapters/ch06}  % <-- your chapter
+
+
+% ==========================================================
+% Back matter
+% ==========================================================
+
+\backmatter
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

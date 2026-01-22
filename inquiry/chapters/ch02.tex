@@ -1,0 +1,215 @@
+\chapter{Test-Driven Simulated Annealing: From Theory to a Na"ive C Baseline}
+
+\section*{Purpose}
+This chapter translates the conceptual foundations of simulated annealing developed in Chapter~1 into a \emph{correctness-first implementation workflow}. The emphasis is not speed or sophistication, but \textbf{trustworthiness}: every algorithmic component is introduced via inquiry and then validated through test-driven development (TDD).
+
+By the end of the chapter, we obtain a minimal simulated annealing solver for 2D circle packing that is:
+\begin{itemize}
+\item reproducible,
+\item instrumented,
+\item mathematically faithful to the theory,
+\item and suitable as a baseline for later optimization (OpenMP, CUDA, etc.).
+\end{itemize}
+
+\section{How This Chapter Fits the Narrative}
+
+Chapter~1 answered the question \emph{why} simulated annealing is appropriate for nonconvex geometric optimization. This chapter answers a different question:
+
+\begin{quote}
+\emph{How do we implement simulated annealing so that each theoretical assumption is explicitly checked and enforced by tests?}
+\end{quote}
+
+The organizing principle is:
+[
+\text{Theory} ;\longrightarrow; \text{Algorithmic Invariant} ;\longrightarrow; \text{Unit Test} ;\longrightarrow; \text{Code}.
+]
+
+\section{Learning Outcomes}
+After completing this chapter, you should be able to:
+\begin{itemize}
+\item implement a minimal Metropolis kernel and annealing loop;
+\item encode geometric constraints using smooth penalty energies;
+\item write tests that enforce probabilistic and geometric invariants;
+\item diagnose failures using acceptance-rate and energy traces;
+\item extend the baseline toward feasibility search and joint $(x,L)$ optimization.
+\end{itemize}
+
+\section{Project Skeleton}
+
+We use a deliberately small and explicit structure. Each module corresponds to one theoretical component from Chapter~1.
+
+\begin{verbatim}
+sa_circlepack/
+include/                 (C headers in later chapters)
+src/
+energy.py              # E(x,L)
+propose.py             # proposal kernel
+metropolis.py          # acceptance rule
+anneal.py              # annealing loop
+rng.py                 # deterministic randomness
+tests/
+test_energy.py
+test_propose.py
+test_metropolis.py
+test_anneal.py
+test_reproducibility.py
+\end{verbatim}
+
+Although this chapter uses Python for rapid iteration, the structure mirrors the C implementations developed later.
+
+\section{Design Specification: Na"ive Baseline}
+
+\subsection{State}
+A state consists of
+[
+(X, L), \qquad X \in \mathbb{R}^{N \times 2}, ; L > 0,
+]
+where $X$ stores circle centers and $L$ is the square side length.
+
+\subsection{Energy}
+We implement exactly the energy introduced in Chapter~1:
+[
+E(X,L) = E_{\mathrm{pair}}(X) + E_{\mathrm{wall}}(X,L) + \alpha L.
+]
+
+Pairwise overlap penalty:
+[
+E_{\mathrm{pair}}(X) = \sum_{i<j} \phi(|x_i-x_j|),
+\qquad
+\phi(d) = \max(0, 2r-d)^2.
+]
+
+Wall penalty:
+[
+E_{\mathrm{wall}}(X,L) = \sum_i \sum_{k=1}^2 \Bigl[ \max(0, r-x_{i,k})^2 + \max(0, x_{i,k}-(L-r))^2 \Bigr].
+]
+
+\subsection{Inquiry}
+\begin{itemize}
+\item Why must $E \ge 0$ always?
+\item Why must feasible configurations yield $E_{\mathrm{pair}}=E_{\mathrm{wall}}=0$?
+\end{itemize}
+
+These questions become explicit unit tests.
+
+\subsection{Proposal Kernel}
+A proposal perturbs exactly one circle:
+[
+x_k' = x_k + \delta, \qquad \delta \sim \mathcal{N}(0, \sigma^2 I_2).
+]
+
+This choice enforces locality and ergodicity. In the naive baseline, proposals may be clipped to remain within a bounding box to avoid numerical blow-up.
+
+\subsection{Acceptance Rule}
+Given $\Delta E = E' - E$ at temperature $T$, we apply the Metropolis criterion:
+[
+\mathbb{P}(\text{accept}) = \min(1, e^{-\Delta E/T}).
+]
+
+\subsection{Cooling Schedule}
+We use geometric cooling:
+[
+T_{k+1} = \gamma T_k, \qquad \gamma \in (0,1).
+]
+
+This is not theoretically optimal, but it is sufficient for a correctness baseline.
+
+\section{Inquiry-Driven TDD Sequence}
+
+Each exercise introduces a single invariant implied by the theory and enforces it via tests.
+
+\subsection{Exercise 1: Deterministic Randomness}
+\textbf{Invariant:} identical seeds imply identical trajectories.
+
+\textbf{Test:}
+\begin{itemize}
+\item Repeated calls with the same seed produce identical proposals and acceptance decisions.
+\end{itemize}
+
+\subsection{Exercise 2: Energy Sanity}
+\textbf{Invariants:}
+\begin{enumerate}
+\item $E(X,L) \ge 0$ for all $X$.
+\item Well-separated interior configurations yield zero penalty.
+\end{enumerate}
+
+\subsection{Exercise 3: Symmetry}
+\textbf{Invariant:} permuting circle indices leaves $E_{\mathrm{pair}}$ unchanged.
+
+\subsection{Exercise 4: Proposal Locality}
+\textbf{Invariants:}
+\begin{enumerate}
+\item Exactly one circle moves per proposal.
+\item Empirical variance of steps scales with $\sigma^2$.
+\end{enumerate}
+
+\subsection{Exercise 5: Metropolis Correctness}
+\textbf{Invariants:}
+\begin{enumerate}
+\item Downhill moves are always accepted.
+\item Uphill acceptance frequencies match $e^{-\Delta E/T}$.
+\end{enumerate}
+
+\subsection{Exercise 6: Best-So-Far Monotonicity}
+\textbf{Invariant:} the best recorded energy is nonincreasing over time.
+
+\subsection{Exercise 7: Temperature Effects}
+\textbf{Observation:} higher initial temperature improves escape from overlaps on small $N$.
+
+\section{Diagnostics and Instrumentation}
+
+Acceptance rate is a primary diagnostic:
+\begin{itemize}
+\item early phase: 0.2--0.6,
+\item late phase: 0.01--0.2.
+\end{itemize}
+
+Deviations indicate mismatches between proposal scale, temperature, and energy magnitude.
+
+\section{Minimal Interfaces}
+
+The following interfaces are intentionally narrow:
+
+\begin{verbatim}
+energy.energy(X, L, r, alpha) -> float
+energy.pair_energy(X, r) -> float
+energy.wall_energy(X, L, r) -> float
+
+propose.propose_move(X, L, r, sigma, rng)
+-> (X_new, moved_index)
+
+metropolis.accept(delta_E, T, rng) -> bool
+
+anneal.run(X0, L0, r, alpha, T0, gamma, n_steps, sigma, seed)
+-> dict(trace, best_state, best_energy, accept_rate)
+\end{verbatim}
+
+Each function corresponds to a single theoretical concept from Chapter~1.
+
+\section{Implementation Notes}
+\begin{itemize}
+\item Keep functions pure; pass RNG objects explicitly.
+\item Prefer clarity over vectorization in the baseline.
+\item Log energy, acceptance, and temperature at every step.
+\item Add performance optimizations \emph{only after} all tests pass.
+\end{itemize}
+
+\section{Stretch Goals}
+\begin{enumerate}
+\item Adaptive proposal scaling based on acceptance rate.
+\item Two-stage annealing schedules.
+\item Feasibility search via outer bisection in $L$.
+\item Incremental energy updates for $\mathcal{O}(N)$ proposals.
+\end{enumerate}
+
+\section{Checkpoint}
+
+At this stage, you should have a solver where:
+\begin{itemize}
+\item all tests pass deterministically;
+\item the algorithm reflects the assumptions of Chapter~1;
+\item failures are explainable via diagnostics;
+\item the code is ready to be translated into C in subsequent chapters.
+\end{itemize}
+
+This completes the transition from \emph{theory} to \emph{validated implementation}. In Chapter~3, we repeat this process for gradient-based optimization, culminating in a fully test-driven C implementation of Adam.

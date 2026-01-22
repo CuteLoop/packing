@@ -1,0 +1,12 @@
+% Minimal stub for algorithm.sty to allow compilation when system package is missing
+\ProvidesPackage{algorithm}[2026/01/15 Minimal shim]
+% Provide a simple algorithm environment that centers content in a minipage
+% If caption exists, we'll temporarily override it inside the environment
+\newenvironment{algorithm}[1][]{%
+  \begin{center}\begin{minipage}{0.95\\linewidth}%
+  \let\alg@oldcaption\caption%
+  \renewcommand{\caption}[1]{\par\textbf{##1}\par}%
+}{%
+  \end{minipage}\end{center}%
+  \let\caption\alg@oldcaption%
+}

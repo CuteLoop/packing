@@ -48,10 +48,14 @@
 
 % ==========================================================
 % Algorithms (optional but recommended)
+% Load only if available to allow builds on minimal TeX installs.
 % ==========================================================
-
-\usepackage{algorithm}
-\usepackage{algpseudocode}
+\IfFileExists{algorithm.sty}{%
+  \usepackage{algorithm}
+  \usepackage{algpseudocode}
+}{%
+  % algorithm.sty not found; continue without algorithm floats.
+}
 
 % ==========================================================
 % References

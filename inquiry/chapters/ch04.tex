@@ -1,0 +1,443 @@
+\chapter{Test-Driven Adam in C (From Scratch)}
+
+\section*{Purpose}
+This chapter is a correctness-first, test-driven implementation of the Adam optimizer in \texttt{C}. The emphasis is on:
+\begin{itemize}
+\item a minimal, auditable implementation (no external ML frameworks),
+\item deterministic behavior and numerical stability,
+\item unit tests that catch the common silent bugs (bias correction, moments, epsilon placement, shape/stride errors),
+\item extensibility toward HPC settings (SIMD/OpenMP) \emph{after} tests are green.
+\end{itemize}
+
+\section*{Guiding Question}
+How do we implement Adam in plain C so that (i) every mathematical step is testable, and (ii) the code is suitable as a performance baseline for later optimization?
+
+\section{Scope and Assumptions}
+We optimize parameters $\theta\in\mathbb{R}^d$ given a gradient vector $g\in\mathbb{R}^d$ supplied by a \emph{gradient oracle}. This chapter focuses on the optimizer only. We will implement:
+\begin{itemize}
+\item Adam state and update step;
+\item optional weight decay (decoupled AdamW form);
+\item float/double support via a typedef;
+\item a tiny test harness (no third-party dependencies required).
+\end{itemize}
+
+\section{Mathematical Specification}
+Given hyperparameters $\eta>0$, $\beta_1,\beta_2\in(0,1)$, and $\varepsilon>0$, Adam performs:
+\begin{align*}
+m_t &= \beta_1 m_{t-1} + (1-\beta_1) g_t,\
+v_t &= \beta_2 v_{t-1} + (1-\beta_2) g_t^{\odot 2},\
+\hat m_t &= \frac{m_t}{1-\beta_1^t},\qquad \hat v_t = \frac{v_t}{1-\beta_2^t},\
+\theta_t &= \theta_{t-1} - \eta, \frac{\hat m_t}{\sqrt{\hat v_t}+\varepsilon}.
+\end{align*}
+All operations are elementwise except scalar multiplications.
+
+\subsection{AdamW (Decoupled Weight Decay)}
+If using AdamW with weight decay $\lambda\ge 0$:
+[
+\theta_t \leftarrow \theta_t - \eta, \lambda, \theta_{t-1}
+]
+\emph{in addition to} the Adam step above. (Decoupled decay is preferred over adding $\lambda\theta$ to gradients.)
+
+\section{Design Requirements (What Must Be True)}
+\begin{enumerate}
+\item \textbf{Bias correction correctness:} first few steps must match the analytic formulas.
+\item \textbf{Second moment non-negativity:} $v_t[i]\ge 0$ always.
+\item \textbf{Epsilon placement:} $\varepsilon$ is added \emph{outside} the square root: $\sqrt{\hat v}+\varepsilon$.
+\item \textbf{No hidden allocations:} all buffers are allocated by the caller or in init.
+\item \textbf{Deterministic stepping:} given the same inputs, the update is bitwise deterministic (within floating-point expectations across compilers).
+\end{enumerate}
+
+\section{Project Skeleton}
+A minimal repository layout:
+
+\begin{verbatim}
+adam_c/
+include/
+adam.h
+adam_types.h
+test_harness.h
+src/
+adam.c
+adam_init.c
+tests/
+test_adam_bias.c
+test_adam_moments.c
+test_adam_quadratic.c
+test_adam_adamw.c
+Makefile
+\end{verbatim}
+
+\section{C API (Small and Testable)}
+
+\subsection{Type Configuration}
+Use a single scalar type.
+
+\begin{verbatim}
+// adam_types.h
+#pragma once
+#include <stddef.h>
+
+#ifndef ADAM_SCALAR_T
+#define ADAM_SCALAR_T double
+#endif
+
+typedef ADAM_SCALAR_T adam_t;
+\end{verbatim}
+
+\subsection{Optimizer State}
+
+\begin{verbatim}
+// adam.h
+#pragma once
+#include "adam_types.h"
+
+typedef struct {
+size_t d;        // dimension
+adam_t lr;       // eta
+adam_t beta1;
+adam_t beta2;
+adam_t eps;
+adam_t weight_decay; // lambda (AdamW); 0 disables
+
+// time step (starts at 0, increments on each step)
+unsigned long long t;
+
+// moments
+adam_t *m; // length d
+adam_t *v; // length d
+
+// cached powers for bias correction
+adam_t beta1_pow; // beta1^t
+adam_t beta2_pow; // beta2^t
+} adam_opt_t;
+
+// init: caller provides buffers m and v of length d
+int adam_init(adam_opt_t *opt, size_t d,
+adam_t lr, adam_t beta1, adam_t beta2, adam_t eps,
+adam_t weight_decay,
+adam_t *m_buf, adam_t *v_buf);
+
+// reset moments and time
+void adam_reset(adam_opt_t *opt);
+
+// single step: theta and grad are length d
+void adam_step(adam_opt_t *opt, adam_t *theta, const adam_t *grad);
+\end{verbatim}
+
+\section{Implementation (Reference)}
+
+\subsection*{src/adam_init.c}
+\begin{verbatim}
+#include "adam.h"
+
+static void zero_vec(adam_t *x, size_t d) {
+for (size_t i = 0; i < d; ++i) x[i] = (adam_t)0;
+}
+
+int adam_init(adam_opt_t *opt, size_t d,
+adam_t lr, adam_t beta1, adam_t beta2, adam_t eps,
+adam_t weight_decay,
+adam_t *m_buf, adam_t *v_buf) {
+if (!opt || !m_buf || !v_buf || d == 0) return -1;
+opt->d = d;
+opt->lr = lr;
+opt->beta1 = beta1;
+opt->beta2 = beta2;
+opt->eps = eps;
+opt->weight_decay = weight_decay;
+opt->t = 0;
+opt->m = m_buf;
+opt->v = v_buf;
+opt->beta1_pow = (adam_t)1;
+opt->beta2_pow = (adam_t)1;
+zero_vec(opt->m, d);
+zero_vec(opt->v, d);
+return 0;
+}
+
+void adam_reset(adam_opt_t *opt) {
+if (!opt) return;
+opt->t = 0;
+opt->beta1_pow = (adam_t)1;
+opt->beta2_pow = (adam_t)1;
+for (size_t i = 0; i < opt->d; ++i) {
+opt->m[i] = (adam_t)0;
+opt->v[i] = (adam_t)0;
+}
+}
+\end{verbatim}
+
+\subsection*{src/adam.c}
+\begin{verbatim}
+#include "adam.h"
+#include <math.h>
+
+void adam_step(adam_opt_t *opt, adam_t *theta, const adam_t *grad) {
+const size_t d = opt->d;
+
+// t := t + 1 and update cached powers
+opt->t += 1;
+opt->beta1_pow *= opt->beta1;
+opt->beta2_pow *= opt->beta2;
+
+const adam_t one = (adam_t)1;
+const adam_t b1 = opt->beta1;
+const adam_t b2 = opt->beta2;
+const adam_t lr = opt->lr;
+const adam_t eps = opt->eps;
+
+const adam_t inv_bias1 = one / (one - opt->beta1_pow);
+const adam_t inv_bias2 = one / (one - opt->beta2_pow);
+
+// Optional decoupled weight decay (AdamW)
+if (opt->weight_decay != (adam_t)0) {
+const adam_t wd = opt->weight_decay;
+for (size_t i = 0; i < d; ++i) {
+theta[i] -= lr * wd * theta[i];
+}
+}
+
+// Moment updates + parameter step
+for (size_t i = 0; i < d; ++i) {
+const adam_t g = grad[i];
+
+```
+// m_t, v_t
+const adam_t m = b1 * opt->m[i] + (one - b1) * g;
+const adam_t v = b2 * opt->v[i] + (one - b2) * (g * g);
+opt->m[i] = m;
+opt->v[i] = v;
+
+// bias corrected
+const adam_t mhat = m * inv_bias1;
+const adam_t vhat = v * inv_bias2;
+
+// epsilon outside sqrt
+theta[i] -= lr * (mhat / (sqrt(vhat) + eps));
+```
+
+}
+}
+\end{verbatim}
+
+\section{A Tiny Test Harness (No Dependencies)}
+
+\subsection*{include/test_harness.h}
+\begin{verbatim}
+#pragma once
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define ASSERT_TRUE(cond) do { 
+if (!(cond)) { 
+fprintf(stderr, "ASSERT_TRUE failed: %s (%s:%d)\n", #cond, **FILE**, **LINE**); 
+exit(1); 
+} 
+} while (0)
+
+#define ASSERT_NEAR(a,b,tol) do { 
+double _da = (double)(a); 
+double _db = (double)(b); 
+double _dt = fabs(_da - _db); 
+if (_dt > (tol)) { 
+fprintf(stderr, "ASSERT_NEAR failed: |%s-%s|=%g > %g (%s:%d)\n", #a, #b, _dt, (double)(tol), **FILE**, **LINE**); 
+exit(1); 
+} 
+} while (0)
+\end{verbatim}
+
+\section{TDD Exercise Sequence}
+
+\subsection{Exercise 1: Bias Correction on Constant Gradient}
+\textbf{Goal:} catch the most common Adam bug.
+
+Set $g_t \equiv g$ constant, $m_0=v_0=0$. Show analytically:
+[
+m_t = (1-\beta_1^t)g,\quad \hat m_t = g.
+]
+Similarly $\hat v_t = g^2$. Therefore the update should be
+[
+\theta_t = \theta_{t-1} - \eta, \frac{g}{|g|+\varepsilon}.
+]
+
+\textbf{Test:} in 1D, with $g=2$, verify the very first step matches the formula within tolerance.
+
+\subsection*{tests/test_adam_bias.c}
+\begin{verbatim}
+#include "adam.h"
+#include "test_harness.h"
+
+int main(void) {
+adam_t m[1], v[1];
+adam_opt_t opt;
+ASSERT_TRUE(adam_init(&opt, 1, (adam_t)0.1, (adam_t)0.9, (adam_t)0.999,
+(adam_t)1e-8, (adam_t)0.0, m, v) == 0);
+
+adam_t theta[1] = {(adam_t)1.0};
+const adam_t grad[1] = {(adam_t)2.0};
+
+adam_step(&opt, theta, grad);
+
+// For constant g, bias-corrected mhat=g and vhat=g^2 at t=1.
+const adam_t expected = (adam_t)1.0 - (adam_t)0.1 * ((adam_t)2.0 / ((adam_t)2.0 + (adam_t)1e-8));
+ASSERT_NEAR(theta[0], expected, 1e-12);
+
+return 0;
+}
+\end{verbatim}
+
+\subsection{Exercise 2: Second Moment Non-Negativity}
+\textbf{Test:} feed arbitrary gradients and verify $v[i] \ge 0$ always.
+
+\subsection*{tests/test_adam_moments.c}
+\begin{verbatim}
+#include "adam.h"
+#include "test_harness.h"
+
+int main(void) {
+enum { d = 8 };
+adam_t m[d], v[d];
+adam_opt_t opt;
+ASSERT_TRUE(adam_init(&opt, d, (adam_t)1e-2, (adam_t)0.9, (adam_t)0.99,
+(adam_t)1e-8, (adam_t)0.0, m, v) == 0);
+
+adam_t theta[d];
+adam_t g[d];
+for (int i = 0; i < d; ++i) { theta[i] = (adam_t)0; g[i] = (adam_t)(i - 3); }
+
+for (int k = 0; k < 100; ++k) {
+for (int i = 0; i < d; ++i) g[i] = (adam_t)((k + 1) * (i - 3));
+adam_step(&opt, theta, g);
+for (int i = 0; i < d; ++i) ASSERT_TRUE(opt.v[i] >= (adam_t)0);
+}
+
+return 0;
+}
+\end{verbatim}
+
+\subsection{Exercise 3: Epsilon Placement Regression Test}
+\textbf{Goal:} ensure $\sqrt{\hat v}+\varepsilon$ and not $\sqrt{\hat v+\varepsilon}$.
+
+\textbf{Test idea:} choose $\hat v$ extremely small (e.g. gradient nearly zero) so that the two expressions differ measurably.
+
+\subsection{Exercise 4: AdamW Decoupled Weight Decay}
+\textbf{Test:} with $g=0$, Adam step should be zero but AdamW should decay parameters by $\theta \leftarrow (1-\eta\lambda)\theta$.
+
+\subsection*{tests/test_adam_adamw.c}
+\begin{verbatim}
+#include "adam.h"
+#include "test_harness.h"
+
+int main(void) {
+adam_t m[1], v[1];
+adam_opt_t opt;
+const adam_t lr = (adam_t)0.1;
+const adam_t wd = (adam_t)0.5;
+ASSERT_TRUE(adam_init(&opt, 1, lr, (adam_t)0.9, (adam_t)0.999,
+(adam_t)1e-8, wd, m, v) == 0);
+
+adam_t theta[1] = {(adam_t)2.0};
+const adam_t grad[1] = {(adam_t)0.0};
+
+adam_step(&opt, theta, grad);
+
+const adam_t expected = (adam_t)2.0 * ((adam_t)1.0 - lr * wd);
+ASSERT_NEAR(theta[0], expected, 1e-12);
+return 0;
+}
+\end{verbatim}
+
+\subsection{Exercise 5: End-to-End on a Quadratic Bowl}
+Minimize
+[
+f(\theta) = \tfrac12|\theta|_2^2 \quad\Rightarrow\quad \nabla f(\theta)=\theta.
+]
+
+\textbf{Test:} initialize $\theta_0$ and run many Adam steps with $g_t=\theta_t$; verify $|\theta|$ decreases below a threshold.
+
+\subsection*{tests/test_adam_quadratic.c}
+\begin{verbatim}
+#include "adam.h"
+#include "test_harness.h"
+
+static adam_t norm2(const adam_t *x, size_t d) {
+adam_t s = (adam_t)0;
+for (size_t i = 0; i < d; ++i) s += x[i]*x[i];
+return (adam_t)sqrt((double)s);
+}
+
+int main(void) {
+enum { d = 4 };
+adam_t m[d], v[d];
+adam_opt_t opt;
+ASSERT_TRUE(adam_init(&opt, d, (adam_t)1e-1, (adam_t)0.9, (adam_t)0.999,
+(adam_t)1e-8, (adam_t)0.0, m, v) == 0);
+
+adam_t theta[d] = {(adam_t)5.0,(adam_t)-3.0,(adam_t)2.0,(adam_t)-1.0};
+adam_t g[d];
+
+const adam_t n0 = norm2(theta, d);
+for (int k = 0; k < 2000; ++k) {
+for (int i = 0; i < d; ++i) g[i] = theta[i];
+adam_step(&opt, theta, g);
+}
+const adam_t n1 = norm2(theta, d);
+ASSERT_TRUE(n1 < (adam_t)1e-2 * n0);
+return 0;
+}
+\end{verbatim}
+
+\section{Makefile (Minimal)}
+
+\begin{verbatim}
+CC ?= gcc
+CFLAGS ?= -O2 -std=c11 -Wall -Wextra -Iinclude
+LDFLAGS ?= -lm
+
+SRC = src/adam.c src/adam_init.c
+
+TESTS = 
+tests/test_adam_bias 
+tests/test_adam_moments 
+tests/test_adam_adamw 
+tests/test_adam_quadratic
+
+all: $(TESTS)
+
+tests/%: tests/%.c $(SRC)
+$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+test: all
+@for t in $(TESTS); do echo "[RUN] $$t"; $$t; echo "[OK ] $$t"; done
+
+clean:
+rm -f $(TESTS)
+\end{verbatim}
+
+\section{Debugging Checklist}
+When a test fails, the most likely issues are:
+\begin{itemize}
+\item using $\beta^t$ with wrong $t$ indexing (off-by-one);
+\item bias-correction computed using the \emph{old} power rather than updated power;
+\item epsilon placed inside the square root;
+\item integer truncation when computing norms or tolerances;
+\item accidental aliasing between \texttt{theta} and \texttt{grad} buffers.
+\end{itemize}
+
+\section{HPC Extensions (After Tests are Green)}
+\begin{enumerate}
+\item \textbf{Incremental vectorization:} replace the inner loop with SIMD intrinsics.
+\item \textbf{OpenMP:} parallelize the parameter dimension for large $d$.
+\item \textbf{Mixed precision:} keep moments in float, accumulate in double.
+\item \textbf{Fused kernels:} combine weight decay, moments, and update in one pass.
+\end{enumerate}
+
+\section{Checkpoint}
+By the end of this chapter you should have a C repository where:
+\begin{itemize}
+\item \texttt{make test} executes all tests and returns success;
+\item the Adam step matches analytic bias-corrected formulas at early iterations;
+\item the quadratic-bowl end-to-end test demonstrates stable convergence;
+\item the code is ready to be optimized without sacrificing correctness.
+\end{itemize}

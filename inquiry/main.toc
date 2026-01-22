@@ -1,0 +1,134 @@
+\contentsline {chapter}{Preface}{v}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Simulated Annealing for Circle Packing in a Square}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}The Optimization Problem}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Configuration Space}{1}{subsection.1.1.1}%
+\contentsline {section}{\numberline {1.2}Why Classical Optimization Fails}{2}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Inquiry}{2}{subsection.1.2.1}%
+\contentsline {section}{\numberline {1.3}From Optimization to Sampling}{2}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Energy Formulation}{2}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Key Question}{2}{subsection.1.3.2}%
+\contentsline {section}{\numberline {1.4}Statistical Mechanics Perspective}{2}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Gibbs Measure}{3}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}Metropolis Acceptance Rule}{3}{subsection.1.4.2}%
+\contentsline {subsection}{\numberline {1.4.3}Inquiry}{3}{subsection.1.4.3}%
+\contentsline {section}{\numberline {1.5}Simulated Annealing as a Limit Process}{3}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}Theoretical Guarantee}{3}{subsection.1.5.1}%
+\contentsline {section}{\numberline {1.6}Algorithmic Ingredients}{3}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Energy Design for Circle Packing}{4}{section.1.7}%
+\contentsline {subsection}{\numberline {1.7.1}Pairwise Overlap Penalty}{4}{subsection.1.7.1}%
+\contentsline {subsection}{\numberline {1.7.2}Inquiry}{4}{subsection.1.7.2}%
+\contentsline {section}{\numberline {1.8}Proposal Mechanisms}{4}{section.1.8}%
+\contentsline {section}{\numberline {1.9}Optimizing the Square Size}{5}{section.1.9}%
+\contentsline {subsection}{\numberline {1.9.1}Feasibility Search}{5}{subsection.1.9.1}%
+\contentsline {subsection}{\numberline {1.9.2}Joint Optimization}{5}{subsection.1.9.2}%
+\contentsline {subsection}{\numberline {1.9.3}Inquiry}{5}{subsection.1.9.3}%
+\contentsline {section}{\numberline {1.10}Common Failure Modes}{5}{section.1.10}%
+\contentsline {section}{\numberline {1.11}Exercises}{5}{section.1.11}%
+\contentsline {section}{\numberline {1.12}Conceptual Summary}{5}{section.1.12}%
+\contentsline {chapter}{\numberline {2}Test-Driven Simulated Annealing: From Theory to a Na"ive C Baseline}{7}{chapter.2}%
+\contentsline {section}{\numberline {2.1}How This Chapter Fits the Narrative}{7}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Learning Outcomes}{8}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Project Skeleton}{8}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Design Specification: Na"ive Baseline}{8}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}State}{8}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Energy}{9}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Inquiry}{9}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Proposal Kernel}{9}{subsection.2.4.4}%
+\contentsline {subsection}{\numberline {2.4.5}Acceptance Rule}{9}{subsection.2.4.5}%
+\contentsline {subsection}{\numberline {2.4.6}Cooling Schedule}{9}{subsection.2.4.6}%
+\contentsline {section}{\numberline {2.5}Inquiry-Driven TDD Sequence}{9}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Exercise 1: Deterministic Randomness}{9}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Exercise 2: Energy Sanity}{10}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Exercise 3: Symmetry}{10}{subsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.5.4}Exercise 4: Proposal Locality}{10}{subsection.2.5.4}%
+\contentsline {subsection}{\numberline {2.5.5}Exercise 5: Metropolis Correctness}{10}{subsection.2.5.5}%
+\contentsline {subsection}{\numberline {2.5.6}Exercise 6: Best-So-Far Monotonicity}{10}{subsection.2.5.6}%
+\contentsline {subsection}{\numberline {2.5.7}Exercise 7: Temperature Effects}{10}{subsection.2.5.7}%
+\contentsline {section}{\numberline {2.6}Diagnostics and Instrumentation}{10}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Minimal Interfaces}{11}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Implementation Notes}{11}{section.2.8}%
+\contentsline {section}{\numberline {2.9}Stretch Goals}{11}{section.2.9}%
+\contentsline {section}{\numberline {2.10}Checkpoint}{11}{section.2.10}%
+\contentsline {chapter}{\numberline {3}Inquiry-Based Implementation of Stochastic Gradient Descent with Adam}{13}{chapter.3}%
+\contentsline {section}{\numberline {3.1}From Deterministic to Stochastic Gradients}{13}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Inquiry}{13}{subsection.3.1.1}%
+\contentsline {section}{\numberline {3.2}Stochastic Gradient Descent}{14}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Inquiry}{14}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Key Phenomena}{14}{subsection.3.2.2}%
+\contentsline {section}{\numberline {3.3}Momentum as Time Averaging}{14}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Inquiry}{14}{subsection.3.3.1}%
+\contentsline {section}{\numberline {3.4}Adaptive Learning Rates}{14}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Inquiry}{15}{subsection.3.4.1}%
+\contentsline {section}{\numberline {3.5}The Adam Optimizer}{15}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Algorithm}{15}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Inquiry}{15}{subsection.3.5.2}%
+\contentsline {section}{\numberline {3.6}Test-Driven Implementation Strategy}{15}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Core Invariants to Test}{15}{subsection.3.6.1}%
+\contentsline {section}{\numberline {3.7}Exercise Sequence (TDD)}{16}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Exercise 1: Gradient Oracle}{16}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}Exercise 2: Momentum Averaging}{16}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Exercise 3: Second-Moment Accumulator}{16}{subsection.3.7.3}%
+\contentsline {subsection}{\numberline {3.7.4}Exercise 4: Bias Correction}{16}{subsection.3.7.4}%
+\contentsline {subsection}{\numberline {3.7.5}Exercise 5: Adam Step on Quadratic Bowl}{16}{subsection.3.7.5}%
+\contentsline {section}{\numberline {3.8}Failure Modes}{16}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Conceptual Summary}{16}{section.3.9}%
+\contentsline {chapter}{\numberline {4}Test-Driven Adam in C (From Scratch)}{17}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Scope and Assumptions}{17}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Mathematical Specification}{18}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}AdamW (Decoupled Weight Decay)}{18}{subsection.4.2.1}%
+\contentsline {section}{\numberline {4.3}Design Requirements (What Must Be True)}{18}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Project Skeleton}{18}{section.4.4}%
+\contentsline {section}{\numberline {4.5}C API (Small and Testable)}{19}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Type Configuration}{19}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Optimizer State}{19}{subsection.4.5.2}%
+\contentsline {section}{\numberline {4.6}Implementation (Reference)}{20}{section.4.6}%
+\contentsline {section}{\numberline {4.7}A Tiny Test Harness (No Dependencies)}{23}{section.4.7}%
+\contentsline {section}{\numberline {4.8}TDD Exercise Sequence}{23}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}Exercise 1: Bias Correction on Constant Gradient}{23}{subsection.4.8.1}%
+\contentsline {subsection}{\numberline {4.8.2}Exercise 2: Second Moment Non-Negativity}{24}{subsection.4.8.2}%
+\contentsline {subsection}{\numberline {4.8.3}Exercise 3: Epsilon Placement Regression Test}{25}{subsection.4.8.3}%
+\contentsline {subsection}{\numberline {4.8.4}Exercise 4: AdamW Decoupled Weight Decay}{25}{subsection.4.8.4}%
+\contentsline {subsection}{\numberline {4.8.5}Exercise 5: End-to-End on a Quadratic Bowl}{26}{subsection.4.8.5}%
+\contentsline {section}{\numberline {4.9}Makefile (Minimal)}{26}{section.4.9}%
+\contentsline {section}{\numberline {4.10}Debugging Checklist}{27}{section.4.10}%
+\contentsline {section}{\numberline {4.11}HPC Extensions (After Tests are Green)}{27}{section.4.11}%
+\contentsline {section}{\numberline {4.12}Checkpoint}{28}{section.4.12}%
+\contentsline {chapter}{\numberline {5}Inquiry-Based Implementation of Stochastic Gradient Descent with Adam}{29}{chapter.5}%
+\contentsline {section}{\numberline {5.1}From Deterministic to Stochastic Gradients}{29}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Inquiry}{29}{subsection.5.1.1}%
+\contentsline {section}{\numberline {5.2}Stochastic Gradient Descent}{30}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Inquiry}{30}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Key Phenomena}{30}{subsection.5.2.2}%
+\contentsline {section}{\numberline {5.3}Momentum as Time Averaging}{30}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Inquiry}{30}{subsection.5.3.1}%
+\contentsline {section}{\numberline {5.4}Adaptive Learning Rates}{30}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}Inquiry}{31}{subsection.5.4.1}%
+\contentsline {section}{\numberline {5.5}The Adam Optimizer}{31}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Algorithm}{31}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Inquiry}{31}{subsection.5.5.2}%
+\contentsline {section}{\numberline {5.6}Test-Driven Implementation Strategy}{31}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Core Invariants to Test}{31}{subsection.5.6.1}%
+\contentsline {section}{\numberline {5.7}Exercise Sequence (TDD)}{32}{section.5.7}%
+\contentsline {subsection}{\numberline {5.7.1}Exercise 1: Gradient Oracle}{32}{subsection.5.7.1}%
+\contentsline {subsection}{\numberline {5.7.2}Exercise 2: Momentum Averaging}{32}{subsection.5.7.2}%
+\contentsline {subsection}{\numberline {5.7.3}Exercise 3: Second-Moment Accumulator}{32}{subsection.5.7.3}%
+\contentsline {subsection}{\numberline {5.7.4}Exercise 4: Bias Correction}{32}{subsection.5.7.4}%
+\contentsline {subsection}{\numberline {5.7.5}Exercise 5: Adam Step on Quadratic Bowl}{32}{subsection.5.7.5}%
+\contentsline {section}{\numberline {5.8}Failure Modes}{32}{section.5.8}%
+\contentsline {section}{\numberline {5.9}Conceptual Summary}{32}{section.5.9}%
+\contentsline {chapter}{\numberline {6}Discrete Formulations of Packing via Independent Sets}{33}{chapter.6}%
+\contentsline {section}{\numberline {6.1}From Continuous Packing to Discrete Candidates}{33}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Candidate placements}{33}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Conflict detection}{34}{subsection.6.1.2}%
+\contentsline {section}{\numberline {6.2}Graph Construction}{34}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Packing as an Independent Set Problem}{34}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Maximum vs.\ maximal independent sets}{34}{subsection.6.3.1}%
+\contentsline {section}{\numberline {6.4}Integer Linear Programming Formulation}{35}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Binary decision variables}{35}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}MILP formulation}{35}{subsection.6.4.2}%
+\contentsline {section}{\numberline {6.5}LP Relaxation and Its Interpretation}{35}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}LP relaxation}{36}{subsection.6.5.1}%
+\contentsline {section}{\numberline {6.6}Algorithmic Solution via Constraint Generation}{36}{section.6.6}%
+\contentsline {subsection}{\numberline {6.6.1}Lazy constraint generation}{36}{subsection.6.6.1}%
+\contentsline {subsection}{\numberline {6.6.2}Transition to integer solutions}{37}{subsection.6.6.2}%
+\contentsline {section}{\numberline {6.7}Interpretation and Scope}{37}{section.6.7}%

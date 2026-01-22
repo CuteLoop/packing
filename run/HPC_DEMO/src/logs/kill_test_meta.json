@@ -1,0 +1,11 @@
+{
+  "build": "compiled:Jan 20 2026 16:18:22",
+  "argv": "./HPC_parallel 100 --time_limit 600 --checkpoint_every 120 --out_prefix kill_test",
+  "N": 100,
+  "seed": 12345,
+  "run_id": 0,
+  "demo": 0,
+  "polish": 1,
+  "A": { "iters": 70000, "T_start": 0.3, "T_end": 0.0003 },
+  "B": { "iters": 35000, "T_start": 0.06, "T_end": 1e-06 }
+}
