@@ -46,9 +46,9 @@ The key conceptual shift of simulated annealing is to replace deterministic desc
 \subsection{Energy Formulation}
 We introduce a scalar energy
 \[
-E(x,L) = E_{\text{overlap}}(x) + \alpha L,
+E(x,L) = E_{ext{overlap}}(x) + \alpha L,
 \]
-where $E_{\text{overlap}}$ penalizes violations of geometric constraints and $\alpha>0$ balances feasibility against compactness.
+where $E_{ext{overlap}}$ penalizes violations of geometric constraints and $\alpha>0$ balances feasibility against compactness.
 
 \subsection{Key Question}
 Why should we ever accept a move that increases $E$?
@@ -91,7 +91,7 @@ These questions will later justify the correctness of the algorithm independent 
 
 Simulated annealing proceeds by lowering the temperature:
 \[
-T_0 > T_1 > \cdots > T_k \to 0.
+T_0 > T_1 > \cdots > T_k o 0.
 \]
 
 \subsection{Theoretical Guarantee}
@@ -101,11 +101,11 @@ With logarithmic cooling, $T_k \sim c/\log k$, simulated annealing converges alm
 
 Every simulated annealing algorithm consists of:
 \begin{enumerate}
-\item \textbf{State space}: configurations $x$ (and possibly $L$).
-\item \textbf{Energy}: objective plus penalties.
-\item \textbf{Proposal kernel}: how candidate states are generated.
-\item \textbf{Acceptance rule}: Metropolis criterion.
-\item \textbf{Cooling schedule}: temperature decay.
+\item extbf{State space}: configurations $x$ (and possibly $L$).
+\item extbf{Energy}: objective plus penalties.
+\item extbf{Proposal kernel}: how candidate states are generated.
+\item extbf{Acceptance rule}: Metropolis criterion.
+\item extbf{Cooling schedule}: temperature decay.
 \end{enumerate}
 
 Failure of any component compromises the method.
@@ -126,7 +126,7 @@ For distance $d$ between circle centers,
 
 Total overlap energy:
 \[
-E_{\text{overlap}}(x) = \sum_{i<j} \phi(|x_i-x_j|) + \sum_i \phi_{\text{wall}}(x_i).
+E_{ext{overlap}}(x) = \sum_{i<j} \phi(|x_i-x_j|) + \sum_i \phi_{ext{wall}}(x_i).
 \]
 
 \subsection{Inquiry}
@@ -159,7 +159,7 @@ Fix $L$, test feasibility via SA, and perform an outer binary search on $L$.
 \subsection{Joint Optimization}
 Optimize $(x,L)$ jointly using
 \[
-E(x,L) = E_{\text{overlap}}(x) + \alpha L.
+E(x,L) = E_{ext{overlap}}(x) + \alpha L.
 \]
 
 \subsection{Inquiry}
@@ -172,7 +172,7 @@ E(x,L) = E_{\text{overlap}}(x) + \alpha L.
 
 \begin{center}
 \begin{tabular}{ll}
-	extbf{Symptom} & \textbf{Cause} \\
+	extbf{Symptom} & extbf{Cause} \\
 \hline
 Freezing & Cooling too fast \\
 Jittering & Proposal scale too large \\

@@ -88,7 +88,7 @@ using the candidate set.
 \begin{problem}[Discrete Packing via MIS]
 Given a conflict graph $G = (V,E)$, find
 \[
-\max_{S \subset V} |S| \quad \text{such that } S \text{ is an independent set.}
+\max_{S \subset V} |S| \quad ext{such that } S ext{ is an independent set.}
 \]
 \end{problem}
 
@@ -112,7 +112,7 @@ where $x_i = 1$ indicates that candidate $p_i$ is selected.
 The packing problem becomes:
 \begin{align}
 \max \quad & \sum_{i \in V} x_i \\
-\text{subject to} \quad
+ext{subject to} \quad
 & x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
 & x_i \in \{0,1\}, \quad \forall i \in V.
 \end{align}
@@ -134,7 +134,7 @@ x_i \in [0,1].
 The relaxed problem is:
 \begin{align}
 \max \quad & \sum_{i \in V} x_i \\
-\text{subject to} \quad
+ext{subject to} \quad
 & x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
 & 0 \le x_i \le 1.
 \end{align}
@@ -162,7 +162,7 @@ An efficient strategy is to generate constraints iteratively:
 \item Solve the LP.
 \item Detect violated conflict constraints:
 \[
-x_i + x_j > 1 \quad \text{for some conflicting pair } (i,j).
+x_i + x_j > 1 \quad ext{for some conflicting pair } (i,j).
 \]
 \item Add the violated constraints.
 \item Repeat until no violations remain.

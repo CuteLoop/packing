@@ -1,7 +1,7 @@
 \chapter{Test-Driven Simulated Annealing: From Theory to a Na"ive C Baseline}
 
 \section*{Purpose}
-This chapter translates the conceptual foundations of simulated annealing developed in Chapter~1 into a \emph{correctness-first implementation workflow}. The emphasis is not speed or sophistication, but \textbf{trustworthiness}: every algorithmic component is introduced via inquiry and then validated through test-driven development (TDD).
+This chapter translates the conceptual foundations of simulated annealing developed in Chapter~1 into a \emph{correctness-first implementation workflow}. The emphasis is not speed or sophistication, but extbf{trustworthiness}: every algorithmic component is introduced via inquiry and then validated through test-driven development (TDD).
 
 By the end of the chapter, we obtain a minimal simulated annealing solver for 2D circle packing that is:
 \begin{itemize}
@@ -20,9 +20,9 @@ Chapter~1 answered the question \emph{why} simulated annealing is appropriate fo
 \end{quote}
 
 The organizing principle is:
-[
-\text{Theory} ;\longrightarrow; \text{Algorithmic Invariant} ;\longrightarrow; \text{Unit Test} ;\longrightarrow; \text{Code}.
-]
+\[
+	ext{Theory} ;\longrightarrow; ext{Algorithmic Invariant} ;\longrightarrow; ext{Unit Test} ;\longrightarrow; ext{Code}.
+\]
 
 \section{Learning Outcomes}
 After completing this chapter, you should be able to:
@@ -61,28 +61,28 @@ Although this chapter uses Python for rapid iteration, the structure mirrors the
 
 \subsection{State}
 A state consists of
-[
-(X, L), \qquad X \in \mathbb{R}^{N \times 2}, ; L > 0,
-]
+\[
+(X, L), \qquad X \in \mathbb{R}^{N imes 2}, \; L > 0,
+\]
 where $X$ stores circle centers and $L$ is the square side length.
 
 \subsection{Energy}
 We implement exactly the energy introduced in Chapter~1:
-[
+\[
 E(X,L) = E_{\mathrm{pair}}(X) + E_{\mathrm{wall}}(X,L) + \alpha L.
-]
+\]
 
 Pairwise overlap penalty:
-[
+\[
 E_{\mathrm{pair}}(X) = \sum_{i<j} \phi(|x_i-x_j|),
 \qquad
 \phi(d) = \max(0, 2r-d)^2.
-]
+\]
 
 Wall penalty:
-[
+\[
 E_{\mathrm{wall}}(X,L) = \sum_i \sum_{k=1}^2 \Bigl[ \max(0, r-x_{i,k})^2 + \max(0, x_{i,k}-(L-r))^2 \Bigr].
-]
+\]
 
 \subsection{Inquiry}
 \begin{itemize}
@@ -94,23 +94,23 @@ These questions become explicit unit tests.
 
 \subsection{Proposal Kernel}
 A proposal perturbs exactly one circle:
-[
+\[
 x_k' = x_k + \delta, \qquad \delta \sim \mathcal{N}(0, \sigma^2 I_2).
-]
+\]
 
 This choice enforces locality and ergodicity. In the naive baseline, proposals may be clipped to remain within a bounding box to avoid numerical blow-up.
 
 \subsection{Acceptance Rule}
 Given $\Delta E = E' - E$ at temperature $T$, we apply the Metropolis criterion:
-[
-\mathbb{P}(\text{accept}) = \min(1, e^{-\Delta E/T}).
-]
+\[
+\mathbb{P}(ext{accept}) = \min(1, e^{-\Delta E/T}).
+\]
 
 \subsection{Cooling Schedule}
 We use geometric cooling:
-[
+\[
 T_{k+1} = \gamma T_k, \qquad \gamma \in (0,1).
-]
+\]
 
 This is not theoretically optimal, but it is sufficient for a correctness baseline.
 
@@ -119,42 +119,42 @@ This is not theoretically optimal, but it is sufficient for a correctness baseli
 Each exercise introduces a single invariant implied by the theory and enforces it via tests.
 
 \subsection{Exercise 1: Deterministic Randomness}
-\textbf{Invariant:} identical seeds imply identical trajectories.
+extbf{Invariant:} identical seeds imply identical trajectories.
 
-\textbf{Test:}
+extbf{Test:}
 \begin{itemize}
 \item Repeated calls with the same seed produce identical proposals and acceptance decisions.
 \end{itemize}
 
 \subsection{Exercise 2: Energy Sanity}
-\textbf{Invariants:}
+extbf{Invariants:}
 \begin{enumerate}
 \item $E(X,L) \ge 0$ for all $X$.
 \item Well-separated interior configurations yield zero penalty.
 \end{enumerate}
 
 \subsection{Exercise 3: Symmetry}
-\textbf{Invariant:} permuting circle indices leaves $E_{\mathrm{pair}}$ unchanged.
+extbf{Invariant:} permuting circle indices leaves $E_{\mathrm{pair}}$ unchanged.
 
 \subsection{Exercise 4: Proposal Locality}
-\textbf{Invariants:}
+extbf{Invariants:}
 \begin{enumerate}
 \item Exactly one circle moves per proposal.
 \item Empirical variance of steps scales with $\sigma^2$.
 \end{enumerate}
 
 \subsection{Exercise 5: Metropolis Correctness}
-\textbf{Invariants:}
+extbf{Invariants:}
 \begin{enumerate}
 \item Downhill moves are always accepted.
 \item Uphill acceptance frequencies match $e^{-\Delta E/T}$.
 \end{enumerate}
 
 \subsection{Exercise 6: Best-So-Far Monotonicity}
-\textbf{Invariant:} the best recorded energy is nonincreasing over time.
+extbf{Invariant:} the best recorded energy is nonincreasing over time.
 
 \subsection{Exercise 7: Temperature Effects}
-\textbf{Observation:} higher initial temperature improves escape from overlaps on small $N$.
+extbf{Observation:} higher initial temperature improves escape from overlaps on small $N$.
 
 \section{Diagnostics and Instrumentation}
 

@@ -8,10 +8,9 @@ This chapter develops stochastic gradient descent (SGD) and the Adam optimizer t
 \section{From Deterministic to Stochastic Gradients}
 
 Consider the finite-sum optimization problem
-[
-\min_{\theta \in \mathbb{R}^d} ; F(\theta) := \frac{1}{N} \sum_{i=1}^N f_i(\theta).
-]
-
+\[
+\min_{heta \in \mathbb{R}^d} ; F(\theta) := \frac{1}{N} \sum_{i=1}^N f_i(\theta).
+\]
 \subsection{Inquiry}
 \begin{itemize}
 \item What happens if $N$ is very large?
@@ -20,23 +19,22 @@ Consider the finite-sum optimization problem
 \end{itemize}
 
 This leads to stochastic gradients. Given a random index $i_k$, define
-[
-g_k := \nabla f_{i_k}(\theta_k).
-]
-Then $\mathbb{E}[g_k] = \nabla F(\theta_k)$, but $g_k$ has nonzero variance.
+\[
+g_k := \nabla f_{i_k}(heta_k).
+\]
+Then $\mathbb{E}[g_k] = \nabla F(heta_k)$, but $g_k$ has nonzero variance.
 
 \section{Stochastic Gradient Descent}
 
 The SGD iteration is
-[
-\theta_{k+1} = \theta_k - \eta_k g_k.
-]
-
+\[
+heta_{k+1} = heta_k - \eta_k g_k.
+\]
 \subsection{Inquiry}
 \begin{itemize}
 \item Why does SGD converge despite noisy gradients?
 \item What role does the learning rate $\eta_k$ play?
-\item Why must $\eta_k \to 0$ in theory but not always in practice?
+\item Why must $\eta_k o 0$ in theory but not always in practice?
 \end{itemize}
 
 \subsection{Key Phenomena}
@@ -50,8 +48,8 @@ The SGD iteration is
 
 To reduce variance and accelerate convergence, introduce momentum:
 \begin{align*}
-v_{k+1} &= \beta v_k + (1-\beta) g_k, \
-\theta_{k+1} &= \theta_k - \eta v_{k+1}.
+v_{k+1} &= \beta v_k + (1-\beta) g_k, \\
+heta_{k+1} &= heta_k - \eta v_{k+1}.
 \end{align*}
 
 \subsection{Inquiry}
@@ -68,9 +66,9 @@ Momentum can be interpreted as discretizing a second-order differential equation
 Different coordinates may have gradients of very different scales. Adaptive methods address this by normalizing updates.
 
 Define the second-moment accumulator
-[
+\[
 s_{k+1} = \beta_2 s_k + (1-\beta_2) g_k^2,
-]
+\]
 where the square is taken elementwise.
 
 \subsection{Inquiry}
@@ -87,22 +85,20 @@ Adam combines momentum and adaptive scaling.
 \subsection{Algorithm}
 Initialize $m_0 = 0$, $v_0 = 0$.
 \begin{align*}
-m_{k+1} &= \beta_1 m_k + (1-\beta_1) g_k, \
+m_{k+1} &= \beta_1 m_k + (1-\beta_1) g_k, \\
 v_{k+1} &= \beta_2 v_k + (1-\beta_2) g_k^2.
 \end{align*}
 
 Bias correction:
-[
+\[
 \hat m_{k+1} = \frac{m_{k+1}}{1-\beta_1^{k+1}},
 \qquad
 \hat v_{k+1} = \frac{v_{k+1}}{1-\beta_2^{k+1}}.
-]
-
+\]
 Update:
-[
-\theta_{k+1} = \theta_k - \eta \frac{\hat m_{k+1}}{\sqrt{\hat v_{k+1}} + \varepsilon}.
-]
-
+\[
+heta_{k+1} = heta_k - \eta \frac{\hat m_{k+1}}{\sqrt{\hat v_{k+1}} + \varepsilon}.
+\]
 \subsection{Inquiry}
 \begin{itemize}
 \item Why is bias correction necessary?
@@ -143,11 +139,11 @@ Check that Adam converges to the minimizer of $f(\theta)=|\theta|^2$ from random
 
 \begin{center}
 \begin{tabular}{ll}
-\textbf{Symptom} & \textbf{Cause} \
+\textbf{Symptom} & \textbf{Cause} \\
 \hline
-Divergence & Learning rate too large \
-Slow convergence & $\beta_1$ too small \
-Parameter drift & $\beta_2$ too large \
+Divergence & Learning rate too large \\
+Slow convergence & $\beta_1$ too small \\
+Parameter drift & $\beta_2$ too large \\
 Poor generalization & Excessive adaptivity
 \end{tabular}
 \end{center}
