@@ -10,6 +10,8 @@ typedef struct {
     size_t n_steps;
     double* E;      /* energy trace */
     double* T;      /* temperature trace */
+    double* E_pair; /* pairwise energy trace (diagnostic) */
+    double* E_wall; /* wall energy trace (diagnostic) */
     int* accepted;  /* 0/1 per step */
     size_t* moved;  /* which index moved */
 } Trace;

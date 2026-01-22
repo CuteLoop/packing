@@ -49,10 +49,13 @@ AnnealResult anneal_run(
     res.trace.n_steps = n_steps;
     res.trace.E = xmalloc_double(n_steps);
     res.trace.T = xmalloc_double(n_steps);
+    res.trace.E_pair = xmalloc_double(n_steps);
+    res.trace.E_wall = xmalloc_double(n_steps);
     res.trace.accepted = xmalloc_int(n_steps);
     res.trace.moved = xmalloc_size(n_steps);
 
-    if (!res.trace.E || !res.trace.T || !res.trace.accepted || !res.trace.moved) {
+    if (!res.trace.E || !res.trace.T || !res.trace.E_pair || !res.trace.E_wall ||
+        !res.trace.accepted || !res.trace.moved) {
         free(X); free(X_best);
         return res;
     }
@@ -89,6 +92,9 @@ AnnealResult anneal_run(
         /* record diagnostics */
         res.trace.E[tstep] = E;
         res.trace.T[tstep] = T;
+        /* diagnostic pair/wall energies (explicit compute) */
+        res.trace.E_pair[tstep] = energy_pair(X, N, r);
+        res.trace.E_wall[tstep] = energy_wall(X, N, r, L);
         res.trace.accepted[tstep] = acc;
         res.trace.moved[tstep] = p.idx;
 
@@ -110,6 +116,8 @@ void anneal_free_result(AnnealResult* res)
     free(res->X_best);
     free(res->trace.E);
     free(res->trace.T);
+    free(res->trace.E_pair);
+    free(res->trace.E_wall);
     free(res->trace.accepted);
     free(res->trace.moved);
     memset(res, 0, sizeof(*res));

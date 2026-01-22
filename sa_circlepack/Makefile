@@ -8,6 +8,10 @@ TESTS=tests/test_rng tests/test_energy tests/test_propose tests/test_metropolis 
 
 all: test
 
+# Build runnable SA runner
+sa_run: $(SRC) src/io.c src/main.c
+	$(CC) $(CFLAGS) $(SRC) src/io.c src/main.c -o sa_run $(LDFLAGS)
+
 tests/test_rng: $(SRC) tests/test_rng.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 

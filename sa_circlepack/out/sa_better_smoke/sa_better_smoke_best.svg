@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 20 20">
+  <rect x="0" y="0" width="20" height="20" fill="white"/>
+  <rect x="0" y="0" width="20" height="20" fill="none" stroke="black" stroke-width="0.040000000000000001"/>
+  <circle cx="17.689477602332708" cy="12.46109024217016" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="13.992070815558739" cy="10.423305008426237" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="4.0336420627015785" cy="14.876596291540626" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="2.150801167739758" cy="5.6108800366218325" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="3.3497732353917353" cy="18.035724825103891" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="7.2308618362520285" cy="8.2241359094615145" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="7.9685541807891536" cy="18.27321781073573" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="11.455738883177597" cy="12.967561436831227" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="15.557836045691131" cy="12.780316622251682" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="11.713027833652848" cy="4.3441417257364305" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="13.252971898680034" cy="2.5912419282595245" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="8.0476318674767313" cy="1.2902593926022028" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="6.4515085952997078" cy="15.815187438859079" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="1.9128298863625366" cy="14.78559067306767" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="8.2103073351152887" cy="13.448788496393627" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="15.108208291497371" cy="5.5854436870485946" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="6.0218172911239227" cy="12.417304033942219" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="8.7494147826238411" cy="15.609078224315585" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="7.4287525039761304" cy="5.3705261253979062" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+  <circle cx="1.0663621126476854" cy="3.6092606256295618" r="1" fill="none" stroke="black" stroke-width="0.029999999999999999"/>
+</svg>
