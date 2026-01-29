@@ -39,7 +39,7 @@ $(TARGET): $(OBJS)
 # Compile .c files (Host)
 %.o: %.c
 	@echo "Compiling Host Code: $<"
-	$(CC) $(CFLAGS) $(ARCH) -c $< -o $@
+	$(CC) $(CFLAGS) -Xcompiler -std=c99 $(ARCH) -c $< -o $@
 
 # Compile .cu files (Device)
 %.o: %.cu
