@@ -239,11 +239,17 @@ int main(int argc, char** argv) {
         gpu_download_stats(&soa, host_energies, h_accept, N_CHAINS);
         if (e == 0) {
             gpu_download_energies(&soa, debug_energies, N_CHAINS);
-            printf("--- PHASE 1 DEBUG: Chain Energies ---\n");
-            for (int i = 0; i < 10 && i < N_CHAINS; i++) {
-                printf("Chain %d: %.6f\n", i, debug_energies[i]);
+            printf("BEFORE CLONE: Chain 0: %.6f, Chain 1: %.6f\n", debug_energies[0], debug_energies[1]);
+            printf(">>> Overwriting Chain 1 with Chain 0...\n");
+            gpu_overwrite_chain(&soa, 0, 1, N_POLYS, N_CHAINS);
+            gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, 1);
+            gpu_download_energies(&soa, debug_energies, N_CHAINS);
+            printf("AFTER CLONE:  Chain 0: %.6f, Chain 1: %.6f\n", debug_energies[0], debug_energies[1]);
+            if (fabsf(debug_energies[0] - debug_energies[1]) < 1e-5f) {
+                printf("SUCCESS: Clone Verified.\n");
+            } else {
+                printf("FAILURE: Energies do not match.\n");
             }
-            printf("-------------------------------------\n");
         }
 
         int best_idx = -1;
