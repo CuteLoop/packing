@@ -215,7 +215,6 @@ int main(int argc, char** argv) {
     free(h_x); free(h_y); free(h_a);
 
     float* host_energies = (float*)malloc(N_CHAINS * sizeof(float));
-    float* debug_energies = (float*)malloc(N_CHAINS * sizeof(float));
     time_t last_ckpt = time(NULL);
     time_t last_log = time(NULL);
 
@@ -236,34 +235,7 @@ int main(int argc, char** argv) {
         gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, epoch_steps);
         total_launches += epoch_steps;
 
-        gpu_download_stats(&soa, host_energies, h_accept, N_CHAINS);
-        if (e == 0) {
-            printf("\n=== RUNNING GEOMETRY CLONE TEST ===\n");
-            float* dbg_x = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
-            float* dbg_y = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
-            float* dbg_a = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
-            float* dbg_e = (float*)malloc((size_t)N_CHAINS * sizeof(float));
-
-            gpu_download_state(&soa, dbg_x, dbg_y, dbg_a, dbg_e, N_CHAINS, N_POLYS);
-            int idx0 = 0 * N_POLYS + 0;
-            int idx1 = 1 * N_POLYS + 0;
-            printf("BEFORE CLONE: chain0 poly0 (%.6f, %.6f, %.6f) | chain1 poly0 (%.6f, %.6f, %.6f)\n",
-                   dbg_x[idx0], dbg_y[idx0], dbg_a[idx0], dbg_x[idx1], dbg_y[idx1], dbg_a[idx1]);
-
-            printf(">>> Invoking Clone Kernel (Watch for [GPU DEBUG] output)...\n");
-            gpu_overwrite_chain(&soa, 0, 1, N_POLYS, N_CHAINS);
-            cudaDeviceSynchronize();
-
-            gpu_download_state(&soa, dbg_x, dbg_y, dbg_a, dbg_e, N_CHAINS, N_POLYS);
-            printf("AFTER CLONE:  chain0 poly0 (%.6f, %.6f, %.6f) | chain1 poly0 (%.6f, %.6f, %.6f)\n",
-                   dbg_x[idx0], dbg_y[idx0], dbg_a[idx0], dbg_x[idx1], dbg_y[idx1], dbg_a[idx1]);
-
-            free(dbg_x);
-            free(dbg_y);
-            free(dbg_a);
-            free(dbg_e);
-            printf("=== TEST COMPLETE ===\n");
-        }
+         gpu_download_stats(&soa, host_energies, h_accept, N_CHAINS);
 
         int best_idx = -1;
         float best_E = 1e9f;
@@ -278,8 +250,10 @@ int main(int argc, char** argv) {
             printf("[Epoch %d] Best Energy: %.5f (Chain %d)\n", e, best_E, best_idx);
         }
 
-        if (best_idx >= 0) {
-            for (int i = 0; i < N_CHAINS; i++) {
+        if (best_idx >= 0 && e > 0 && (e % 10 == 0)) {
+            printf("[Collab] Performing genetic exchange at epoch %d...\n", e);
+            int n_replace = 50;
+            for (int i = 0; i < n_replace; i++) {
                 if (i == best_idx) continue;
                 gpu_overwrite_chain(&soa, best_idx, i, N_POLYS, N_CHAINS);
             }
@@ -290,7 +264,7 @@ int main(int argc, char** argv) {
             printf("[Epoch %d] Shrinking L -> %.4f\n", e, current_box);
         }
 
-        if (best_E <= 0.0f) {
+        if (best_E <= -999999.0f) {
             printf("Perfect packing found at Epoch %d! Stopping.\n", e);
             break;
         }
@@ -341,7 +315,6 @@ int main(int argc, char** argv) {
     free(tree.v);
 
     if (logf) fclose(logf);
-    free(debug_energies);
     free(host_energies);
     free(h_t);
     free(h_accept);
