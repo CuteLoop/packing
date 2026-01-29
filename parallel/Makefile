@@ -25,12 +25,29 @@ ALL_CU  = $(wildcard src/*.cu)
 
 # 4. Filter Sources
 # Exclude extra mains and broken tests
-EXCLUDE = src/main_packer.c \
+EXCLUDE = src/accept.c \
+		  src/anneal.c \
+		  src/anneal_joint.c \
+		  src/audit_pairs.c \
+		  src/bounds.c \
+		  src/collide_sat.c \
+		  src/collide_tri_oracle.c \
+		  src/energy.c \
+		  src/export.c \
+		  src/grid_hash.c \
+		  src/instance_cache.c \
+		  src/io.c \
+		  src/main_packer.c \
 		  src/main_unified.c \
-		  src/test_invariants.c \
-		  src/test_soa_logic.c \
+		  src/metropolis.c \
+		  src/propose.c \
 		  src/rng.c \
-		  src/io.c
+		  src/solve_feasible.c \
+		  src/solver.c \
+		  src/solver_parallel.c \
+		  src/solver_serial.c \
+		  src/test_invariants.c \
+		  src/test_soa_logic.c
 
 SRCS_C  = $(filter-out $(EXCLUDE), $(ALL_C))
 SRCS_CU = $(ALL_CU)
