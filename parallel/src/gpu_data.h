@@ -9,7 +9,7 @@
 #define MAX_CHAINS 5120
 #define MAX_POLYS  200
 
-typedef struct {
+typedef struct DeviceSoA {
     float* pos_x;
     float* pos_y;
     float* angle;
