@@ -2,6 +2,7 @@
 #include <curand_kernel.h>
 #include <math.h>
 #include "gpu_data.h"
+#include <stdio.h>
 
 // --- 1. Constant Memory (Geometry) ---
 __constant__ GpuBakedGeometry c_geo;
