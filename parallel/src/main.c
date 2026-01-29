@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
         gpu_upload_state(&soa, h_x, h_y, h_a, N_CHAINS, N_POLYS);
         gpu_sync_metadata(&soa, NULL, h_t, true);
         gpu_sync_rng(&soa, h_rng, N_CHAINS, true);
-        gpu_sync_accept(&soa, h_accept, N_CHAINS);
+        gpu_sync_accept(&soa, h_accept, N_CHAINS, true);
         printf("[Host] Resumed from checkpoint at step %d, L=%.4f\n", start_step, current_box);
     } else {
         float T_min = 1e-5f;
@@ -228,7 +228,7 @@ int main(int argc, char** argv) {
 
         if (total_launches % SWAP_INTERVAL == 0) {
             gpu_sync_metadata(&soa, host_energies, h_t, false);
-            gpu_sync_accept(&soa, h_accept, N_CHAINS);
+            gpu_sync_accept(&soa, h_accept, N_CHAINS, false);
 
             float min_E = 1e9f;
             for(int i=0; i<N_CHAINS; i++) if(host_energies[i] < min_E) min_E = host_energies[i];
