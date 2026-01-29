@@ -13,10 +13,11 @@ LDFLAGS = -lm
 
 # 2. GPU Architecture
 # Adjust this for your specific card to get best performance:
+# sm_60 = P100
 # sm_70 = V100
 # sm_75 = T4 (common on Colab/AWS G4)
 # sm_80 = A100
-ARCH    = -arch=sm_75
+ARCH    = -arch=sm_60
 
 # 3. Source Discovery
 # Find all .c and .cu files

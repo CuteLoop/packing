@@ -215,6 +215,7 @@ int main(int argc, char** argv) {
     free(h_x); free(h_y); free(h_a);
 
     float* host_energies = (float*)malloc(N_CHAINS * sizeof(float));
+    float* debug_energies = (float*)malloc(N_CHAINS * sizeof(float));
     time_t last_ckpt = time(NULL);
     time_t last_log = time(NULL);
 
@@ -224,28 +225,55 @@ int main(int argc, char** argv) {
         fflush(logf);
     }
 
+    long total_steps = 1000000;
+    int epoch_steps = 5000;
+    int n_epochs = (int)(total_steps / epoch_steps);
+
+    printf("Starting Collaborative Annealing: %d Epochs of %d steps...\n", n_epochs, epoch_steps);
+
     int total_launches = start_step;
-    while(keep_running) {
-        gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, STEPS_PER_LAUNCH);
-        total_launches++;
+    for (int e = 0; e < n_epochs && keep_running; e++) {
+        gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, epoch_steps);
+        total_launches += epoch_steps;
 
-        if (total_launches % SWAP_INTERVAL == 0) {
-            gpu_sync_metadata(&soa, host_energies, h_t, false);
-            gpu_sync_accept(&soa, h_accept, N_CHAINS, false);
-
-            float min_E = 1e9f;
-            for(int i=0; i<N_CHAINS; i++) if(host_energies[i] < min_E) min_E = host_energies[i];
-
-            perform_swaps(host_energies, h_t);
-            gpu_sync_metadata(&soa, NULL, h_t, true);
-
-            if (min_E < 1e-4f) {
-                current_box *= 0.999f;
-                printf("[Time %ds] Success! Shrinking L -> %.4f\n",
-                       (int)(total_launches * STEPS_PER_LAUNCH / 10000), current_box);
-            } else if (total_launches % 100 == 0) {
-                printf("[Status] Stuck at L=%.4f. Min E=%.4f\n", current_box, min_E);
+        gpu_download_stats(&soa, host_energies, h_accept, N_CHAINS);
+        if (e == 0) {
+            gpu_download_energies(&soa, debug_energies, N_CHAINS);
+            printf("--- PHASE 1 DEBUG: Chain Energies ---\n");
+            for (int i = 0; i < 10 && i < N_CHAINS; i++) {
+                printf("Chain %d: %.6f\n", i, debug_energies[i]);
             }
+            printf("-------------------------------------\n");
+        }
+
+        int best_idx = -1;
+        float best_E = 1e9f;
+        for (int i = 0; i < N_CHAINS; i++) {
+            if (host_energies[i] < best_E) {
+                best_E = host_energies[i];
+                best_idx = i;
+            }
+        }
+
+        if (e % 10 == 0 && best_idx >= 0) {
+            printf("[Epoch %d] Best Energy: %.5f (Chain %d)\n", e, best_E, best_idx);
+        }
+
+        if (best_idx >= 0) {
+            for (int i = 0; i < N_CHAINS; i++) {
+                if (i == best_idx) continue;
+                gpu_overwrite_chain(&soa, best_idx, i, N_POLYS, N_CHAINS);
+            }
+        }
+
+        if (best_E < 1e-4f) {
+            current_box *= 0.99f;
+            printf("[Epoch %d] Shrinking L -> %.4f\n", e, current_box);
+        }
+
+        if (best_E <= 0.0f) {
+            printf("Perfect packing found at Epoch %d! Stopping.\n", e);
+            break;
         }
 
         if (time(NULL) - last_ckpt > checkpoint_every) {
@@ -260,7 +288,6 @@ int main(int argc, char** argv) {
                 if (host_energies[i] < minE) minE = host_energies[i];
                 if (host_energies[i] > maxE) maxE = host_energies[i];
             }
-            // compute quantiles (simple sort copy)
             float* tmp = (float*)malloc(N_CHAINS * sizeof(float));
             memcpy(tmp, host_energies, N_CHAINS * sizeof(float));
             for (int i = 0; i < N_CHAINS; i++) {
@@ -275,8 +302,8 @@ int main(int argc, char** argv) {
             float p90E = tmp[(int)(0.90f * (N_CHAINS - 1))];
             free(tmp);
 
-            float acceptHot = (float)h_accept[N_CHAINS - 1] / (float)(total_launches * STEPS_PER_LAUNCH + 1);
-            float acceptCold = (float)h_accept[0] / (float)(total_launches * STEPS_PER_LAUNCH + 1);
+            float acceptHot = (float)h_accept[N_CHAINS - 1] / (float)(total_launches + 1);
+            float acceptCold = (float)h_accept[0] / (float)(total_launches + 1);
 
             fprintf(logf, "%ld,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%.6f\n",
                     (long)time(NULL), total_launches, current_box,
@@ -295,6 +322,7 @@ int main(int argc, char** argv) {
     free(tree.v);
 
     if (logf) fclose(logf);
+    free(debug_energies);
     free(host_energies);
     free(h_t);
     free(h_accept);

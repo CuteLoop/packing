@@ -22,6 +22,7 @@ void gpu_alloc_soa(DeviceSoA* soa, int n_chains, int n_polys) {
     CUDA_CHECK(cudaMalloc((void**)&soa->angle, big_size));
 
     CUDA_CHECK(cudaMalloc((void**)&soa->energy, meta_size));
+    CUDA_CHECK(cudaMalloc((void**)&soa->chain_energies, meta_size));
     CUDA_CHECK(cudaMalloc((void**)&soa->temperature, meta_size));
     CUDA_CHECK(cudaMalloc((void**)&soa->accept_count, n_chains * sizeof(int)));
 
@@ -35,6 +36,7 @@ void gpu_free_soa(DeviceSoA* soa) {
     cudaFree(soa->pos_y);
     cudaFree(soa->angle);
     cudaFree(soa->energy);
+    cudaFree(soa->chain_energies);
     cudaFree(soa->temperature);
     cudaFree(soa->accept_count);
     cudaFree(soa->rng);
@@ -155,4 +157,9 @@ extern "C" void gpu_download_stats(DeviceSoA* dev_soa, float* host_energy, int* 
     if (host_accept) {
         CUDA_CHECK(cudaMemcpy(host_accept, dev_soa->accept_count, n_chains * sizeof(int), cudaMemcpyDeviceToHost));
     }
+}
+
+extern "C" void gpu_download_energies(DeviceSoA* dev_soa, float* host_dst, int n_chains)
+{
+    CUDA_CHECK(cudaMemcpy(host_dst, dev_soa->chain_energies, n_chains * sizeof(float), cudaMemcpyDeviceToHost));
 }

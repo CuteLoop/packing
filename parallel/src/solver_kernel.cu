@@ -192,6 +192,7 @@ __global__ void k_anneal_n200(
 
     soa.rng[chain_id] = local_rng;
     soa.energy[chain_id] = E;
+    soa.chain_energies[chain_id] = E;
     soa.accept_count[chain_id] += accepts;
 }
 
@@ -208,4 +209,27 @@ extern "C" void gpu_launch_anneal(
 
     k_anneal_n200<<<numBlocks, blockSize>>>(*soa, n_chains, n_polys, box_size, steps);
     cudaDeviceSynchronize();
+}
+
+__global__ void k_overwrite_chain(DeviceSoA data, int src_chain, int dst_chain, int n_polys, int n_chains) {
+    int poly_idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (poly_idx >= n_polys) return;
+
+    int src_ptr = SOA_IDX(poly_idx, src_chain, n_chains);
+    int dst_ptr = SOA_IDX(poly_idx, dst_chain, n_chains);
+
+    data.pos_x[dst_ptr] = data.pos_x[src_ptr];
+    data.pos_y[dst_ptr] = data.pos_y[src_ptr];
+    data.angle[dst_ptr] = data.angle[src_ptr];
+}
+
+extern "C" void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chain, int n_polys, int n_chains) {
+    int threads = 128;
+    int blocks = (n_polys + threads - 1) / threads;
+    k_overwrite_chain<<<blocks, threads>>>(*data, src_chain, dst_chain, n_polys, n_chains);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("Overwrite Kernel Failed: %s\n", cudaGetErrorString(err));
+    }
 }

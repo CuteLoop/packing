@@ -41,10 +41,14 @@ void gpu_launch_anneal(
 	int steps
 );
 
+void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chain, int n_polys, int n_chains);
+
 // Wrapper for geometry upload
 void gpu_upload_geometry(GpuBakedGeometry* host_geo);
 void gpu_upload_geometry_from_baked(const BakedGeometry* baked);
 void gpu_free_geometry(void);
+
+void gpu_download_energies(DeviceSoA* data, float* host_dst, int n_chains);
 
 #ifdef __cplusplus
 }
