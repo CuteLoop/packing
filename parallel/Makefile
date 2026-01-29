@@ -19,9 +19,20 @@ LDFLAGS = -lm
 ARCH    = -arch=sm_75
 
 # 3. Source Discovery
-# Automatically find all .c and .cu files in src/
-SRCS_C  = $(wildcard src/*.c)
-SRCS_CU = $(wildcard src/*.cu)
+# Find all .c and .cu files
+ALL_C   = $(wildcard src/*.c)
+ALL_CU  = $(wildcard src/*.cu)
+
+# 4. Filter Sources
+# Exclude extra mains and broken tests
+EXCLUDE = src/main_packer.c \
+		  src/main_unified.c \
+		  src/test_invariants.c \
+		  src/test_soa_logic.c \
+		  src/rng.c
+
+SRCS_C  = $(filter-out $(EXCLUDE), $(ALL_C))
+SRCS_CU = $(ALL_CU)
 OBJS    = $(SRCS_C:.c=.o) $(SRCS_CU:.cu=.o)
 
 # 4. Main Target
