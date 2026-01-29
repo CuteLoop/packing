@@ -1,0 +1,129 @@
+\chapter{Collision Checking Study: Triangulation vs SAT vs Cached SAT}
+
+\section{Goal and Hypotheses}
+We study three increasingly optimized collision checking pipelines for a fixed non-convex polygon (the ``ChristmasTree'') under a synthetic workload of random posed instances.
+
+\paragraph{Pipelines.}
+\begin{enumerate}
+  \item \textbf{Triangulation (Tri--Tri).} Triangles from ear clipping; collision via all triangle pairs.
+  \item \textbf{Convex SAT Baseline.} Convex decomposition; SAT axes computed on-the-fly; world vertices recomputed per test.
+  \item \textbf{Cached SAT + Filters.} Convex decomposition; per-part local axes precomputed; for each instance we cache:
+  (i) world vertices, (ii) rotated world axes, (iii) per-instance AABB, and additionally:
+  \begin{itemize}
+    \item (Filter 1) \textbf{Per-part AABB broadphase:} reject part pairs with disjoint AABBs.
+    \item (Filter 2) \textbf{Hint-axis early-out:} test one or two cheap axes derived from part centers before full SAT.
+  \end{itemize}
+\end{enumerate}
+
+\paragraph{Hypothesis.}
+Caching reduces arithmetic and memory traffic per narrowphase test; per-part broadphase reduces the number of SAT calls; hint axes reduce the number of axes tested and SAT calls further.
+
+\section{Experimental Setup}
+Each run generates $N$ instances by sampling translations uniformly in a bounding box and angles uniformly on $[0,2\pi)$, then generates $P$ random instance pairs for collision queries.
+We report both time and structural statistics (counts of rejections and expensive operations).
+
+\paragraph{Build and environment.}
+\begin{itemize}
+  \item Build flags: \texttt{-O3 -march=native -std=c11}
+  \item CPU: \emph{(fill in model)} \quad RAM: \emph{(fill in)} \quad OS: \emph{(fill in)}
+\end{itemize}
+
+\section{Metrics}
+Let $P$ be the total number of requested pair checks. Let $P_{\text{AABB}}$ be the number that pass instance AABB broadphase.
+
+\subsection{Throughput and Speedup}
+We define throughput as
+\[
+\text{Throughput} := \frac{P}{T} \quad \text{(pairs/sec)},
+\]
+and speedup of method $X$ over method $Y$ as
+\[
+S(X\leftarrow Y) := \frac{T_Y}{T_X}.
+\]
+
+\subsection{Narrowphase Structure Metrics (Cached SAT)}
+For the cached SAT pipeline, we additionally measure:
+\begin{itemize}
+  \item $Q$: total part-pairs considered.
+  \item $Q_{\text{AABB}}$: part-pairs that pass part AABB overlap.
+  \item $Q_{\text{hint-rej}}$: part-pairs rejected by hint-axis tests.
+  \item $Q_{\text{SAT}}$: number of full SAT calls.
+  \item $A_{\text{SAT}}$: number of axes tested in full SAT across all calls.
+\end{itemize}
+From these, we compute:
+\[
+\text{Part pass rate} = \frac{Q_{\text{AABB}}}{Q}, \quad
+\text{Hint reject rate} = \frac{Q_{\text{hint-rej}}}{Q_{\text{AABB}}}, \quad
+\text{SAT rate} = \frac{Q_{\text{SAT}}}{Q_{\text{AABB}}}, \quad
+\text{Axes per SAT} = \frac{A_{\text{SAT}}}{Q_{\text{SAT}}}.
+\]
+
+\section{Results}
+\subsection{End-to-end Timings}
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\hline
+Method & $P$ & $P_{\text{AABB}}$ & Time (s) & Throughput (Mpairs/s) \\
+\hline
+Tri--Tri & & & & \\
+Convex SAT (baseline) & & & & \\
+Cached SAT + filters & & & & \\
+\hline
+\end{tabular}
+\caption{End-to-end timings for each collision checking pipeline.}
+\end{table}
+
+\subsection{Speedups}
+\begin{table}[h]
+\centering
+\begin{tabular}{lrr}
+\hline
+Comparison & Speedup (time) & Notes \\
+\hline
+Baseline SAT over Tri--Tri & & \\
+Cached SAT over Baseline SAT & & \\
+Cached SAT over Tri--Tri & & \\
+\hline
+\end{tabular}
+\caption{Speedups derived from timing measurements.}
+\end{table}
+
+\subsection{Cached SAT Narrowphase Breakdown}
+\begin{table}[h]
+\centering
+\begin{tabular}{lrr}
+\hline
+Quantity & Value & Derived rate \\
+\hline
+$Q$ (part-pairs total) & & -- \\
+$Q_{\text{AABB}}$ (part AABB pass) & & $Q_{\text{AABB}}/Q$ \\
+$Q_{\text{hint-rej}}$ (hint rejects) & & $Q_{\text{hint-rej}}/Q_{\text{AABB}}$ \\
+$Q_{\text{SAT}}$ (full SAT calls) & & $Q_{\text{SAT}}/Q_{\text{AABB}}$ \\
+$A_{\text{SAT}}$ (axes tested) & & $A_{\text{SAT}}/Q_{\text{SAT}}$ \\
+\hline
+\end{tabular}
+\caption{Structural statistics explaining where cached SAT saves computation.}
+\end{table}
+
+\section{Interpretation}
+We interpret the performance improvements in terms of avoided work:
+\begin{enumerate}
+  \item \textbf{Caching:} reduces repeated trig, vertex transforms, and axis construction.
+  \item \textbf{Part AABB:} reduces the number of candidate part-pairs that reach SAT.
+  \item \textbf{Hint axes:} rejects many non-overlapping candidates with 1--2 projections instead of full SAT.
+\end{enumerate}
+The narrowphase breakdown quantifies each effect directly via rejection rates and SAT axis counts.
+
+\section{Threats to Validity and Next Experiments}
+\begin{itemize}
+  \item Random-pose workloads may not match packing distributions (near-contact dominance).
+  \item Cache advantages can be amplified or reduced by CPU cache sizes and memory layout.
+\end{itemize}
+
+\paragraph{Next experiments.}
+\begin{enumerate}
+  \item Repeat under packing-generated poses (near-contact heavy).
+  \item Vary $N$ and $P$ to study scaling.
+  \item Add SIMD-friendly SoA layouts and compare.
+\end{enumerate}
