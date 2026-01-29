@@ -219,6 +219,11 @@ __global__ void k_overwrite_chain(DeviceSoA data, int src_chain, int dst_chain, 
     int src_ptr = SOA_IDX(poly_idx, src_chain, n_chains);
     int dst_ptr = SOA_IDX(poly_idx, dst_chain, n_chains);
 
+    if (poly_idx == 0) {
+        printf("[GPU DEBUG] Copying Poly 0: SrcChain %d (Addr %d) -> DstChain %d (Addr %d)\n",
+               src_chain, src_ptr, dst_chain, dst_ptr);
+    }
+
     data.pos_x[dst_ptr] = data.pos_x[src_ptr];
     data.pos_y[dst_ptr] = data.pos_y[src_ptr];
     data.angle[dst_ptr] = data.angle[src_ptr];
@@ -232,5 +237,10 @@ extern "C" void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chai
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("Overwrite Kernel Failed: %s\n", cudaGetErrorString(err));
+    }
+    cudaDeviceSynchronize();
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("!!! CLONE KERNEL FAILED: %s !!!\n", cudaGetErrorString(err));
     }
 }
