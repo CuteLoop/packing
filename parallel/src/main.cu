@@ -12,10 +12,13 @@
 
 #include "gpu_data.h"
 #include "gpu_interface.h"
+
+extern "C" {
 #include "geometry_bake.h"
 #include "convex_decomp.h"
 #include "shape_tree.h"
 #include "triangulate_earclip.h"
+}
 
 #define N_CHAINS 5120
 #define N_POLYS  200
