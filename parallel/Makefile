@@ -29,7 +29,8 @@ EXCLUDE = src/main_packer.c \
 		  src/main_unified.c \
 		  src/test_invariants.c \
 		  src/test_soa_logic.c \
-		  src/rng.c
+		  src/rng.c \
+		  src/io.c
 
 SRCS_C  = $(filter-out $(EXCLUDE), $(ALL_C))
 SRCS_CU = $(ALL_CU)
