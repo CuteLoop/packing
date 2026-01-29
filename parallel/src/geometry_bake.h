@@ -6,7 +6,7 @@
 #include "aabb.h"
 #include <stddef.h>
 
-typedef struct {
+typedef struct BakedGeometry {
     int nParts;
     int totalVerts;
     // contiguous buffers (SoA-style)
