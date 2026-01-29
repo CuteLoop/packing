@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -Wall -Wextra -pedantic -Iinclude
+CFLAGS=-O2 -std=gnu99 -Wall -Wextra -pedantic -Iinclude
 LDFLAGS=-lm
 
 NVCC=nvcc

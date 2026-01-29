@@ -1,0 +1,209 @@
+
+
+\chapter{Discrete Formulations of Packing via Independent Sets}
+\label{chap:discrete-packing-mis}
+
+\section{From Continuous Packing to Discrete Candidates}
+
+We begin with a classical continuous packing problem: given a compact container
+$\Omega \subset \mathbb{R}^2$ (e.g.\ a square or disk) and identical circles of radius $r$,
+place as many circles as possible inside $\Omega$ without overlap.
+
+In the continuous setting, the configuration space is infinite-dimensional,
+and the problem is highly nonconvex. To make algorithmic progress, we introduce
+a \emph{discretization of configuration space}.
+
+\subsection{Candidate placements}
+
+Let $\mathcal{P} = \{p_1, \dots, p_M\} \subset \Omega$ be a finite set of candidate
+circle centers. These may arise from:
+\begin{itemize}
+\item a uniform Cartesian grid,
+\item a union of rotated grids to reduce anisotropy,
+\item or a local patch extracted from a continuous solver.
+\end{itemize}
+
+Each candidate $p_i$ represents the placement of a circle centered at $p_i$.
+
+A candidate is \emph{feasible} if the entire disk lies inside the container:
+\[
+\operatorname{dist}(p_i, \partial \Omega) \ge r.
+\]
+
+Only feasible candidates are retained.
+
+\subsection{Conflict detection}
+
+Two candidates $p_i$ and $p_j$ are said to be \emph{in conflict} if placing circles
+at both locations would cause overlap:
+\[
+\|p_i - p_j\| < 2r.
+\]
+
+This pairwise condition captures all geometric constraints of the packing problem
+once the candidate set has been fixed.
+
+\section{Graph Construction}
+
+The discrete packing problem can now be represented as a graph.
+
+\begin{definition}[Conflict Graph]
+Let $G = (V,E)$ be a graph where:
+\begin{itemize}
+\item Each vertex $i \in V$ corresponds to a candidate placement $p_i \in \mathcal{P}$.
+\item An edge $(i,j) \in E$ exists if and only if $p_i$ and $p_j$ are in conflict.
+\end{itemize}
+\end{definition}
+
+The graph $G$ encodes all pairwise incompatibilities between candidate placements.
+Importantly, this graph is:
+\begin{itemize}
+\item geometric,
+\item sparse (conflicts are local),
+\item independent of the optimization method used later.
+\end{itemize}
+
+\section{Packing as an Independent Set Problem}
+
+A valid packing corresponds to a selection of candidates such that no two
+selected placements conflict.
+
+\begin{definition}[Independent Set]
+A subset $S \subset V$ is an \emph{independent set} if no two vertices in $S$
+share an edge.
+\end{definition}
+
+\subsection{Maximum vs.\ maximal independent sets}
+
+Two notions are relevant:
+\begin{itemize}
+\item A \emph{maximal} independent set cannot be extended by adding another vertex.
+\item A \emph{maximum} independent set has the largest possible cardinality.
+\end{itemize}
+
+In packing problems, we are interested in the \emph{maximum independent set} (MIS),
+since its cardinality corresponds to the maximum number of circles that can be placed
+using the candidate set.
+
+\begin{problem}[Discrete Packing via MIS]
+Given a conflict graph $G = (V,E)$, find
+\[
+\max_{S \subset V} |S| \quad \text{such that } S \text{ is an independent set.}
+\]
+\end{problem}
+
+This formulation is exact for the discretized problem and separates geometry
+(from graph construction) from combinatorial optimization.
+
+\section{Integer Linear Programming Formulation}
+
+The maximum independent set problem admits a standard integer programming formulation.
+
+\subsection{Binary decision variables}
+
+Introduce variables
+\[
+x_i \in \{0,1\}, \quad i \in V,
+\]
+where $x_i = 1$ indicates that candidate $p_i$ is selected.
+
+\subsection{MILP formulation}
+
+The packing problem becomes:
+\begin{align}
+\max \quad & \sum_{i \in V} x_i \\
+	ext{subject to} \quad
+& x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
+& x_i \in \{0,1\}, \quad \forall i \in V.
+\end{align}
+
+Each constraint $x_i + x_j \le 1$ enforces non-overlap for a conflicting pair.
+This formulation is exact and captures all geometric constraints implicitly
+through the graph.
+
+\section{LP Relaxation and Its Interpretation}
+
+Solving the MILP directly is computationally expensive.
+A standard relaxation replaces integrality by bounds:
+\[
+x_i \in [0,1].
+\]
+
+\subsection{LP relaxation}
+
+The relaxed problem is:
+\begin{align}
+\max \quad & \sum_{i \in V} x_i \\
+	ext{subject to} \quad
+& x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
+& 0 \le x_i \le 1.
+\end{align}
+
+This linear program provides:
+\begin{itemize}
+\item an upper bound on the true packing number,
+\item fractional solutions that encode local packing density.
+\end{itemize}
+
+In geometric settings, fractional values often highlight regions of high
+structural order even before integrality is enforced.
+
+\section{Algorithmic Solution via Constraint Generation}
+
+The full conflict graph may contain a large number of edges.
+However, most constraints are never active in optimal solutions.
+
+\subsection{Lazy constraint generation}
+
+An efficient strategy is to generate constraints iteratively:
+
+\begin{enumerate}
+\item Start with variables $x_i \in [0,1]$ and a minimal constraint set.
+\item Solve the LP.
+\item Detect violated conflict constraints:
+\[
+x_i + x_j > 1 \quad \text{for some conflicting pair } (i,j).
+\]
+\item Add the violated constraints.
+\item Repeat until no violations remain.
+\end{enumerate}
+
+Because conflicts are local, the number of active constraints remains manageable.
+
+\subsection{Transition to integer solutions}
+
+Once the LP relaxation stabilizes, integrality constraints are reinstated:
+\[
+x_i \in \{0,1\}.
+\]
+
+The resulting problem is solved using a \emph{branch-and-cut} strategy:
+\begin{itemize}
+\item LP relaxation provides bounds,
+\item branching enforces integrality,
+\item constraint generation continues as needed.
+\end{itemize}
+
+This approach yields exact solutions for local patch problems and provides
+certificates of optimality.
+
+\section{Interpretation and Scope}
+
+This discrete formulation has several important properties:
+\begin{itemize}
+\item It cleanly separates geometry from optimization.
+\item It applies equally to circles, polygons, and more general shapes.
+\item It is well suited for \emph{local patch analysis}, where structure
+such as hexagonal order can emerge without being prescribed.
+\end{itemize}
+
+However, the method does not scale to large global packings and is best
+used as a:
+\begin{itemize}
+\item verification tool,
+\item local structure discovery method,
+\item or subproblem within a hybrid continuous--discrete pipeline.
+\end{itemize}
+
+In later chapters, we will combine this discrete machinery with continuous
+relaxation and periodic boundary conditions to study bulk packing structure.

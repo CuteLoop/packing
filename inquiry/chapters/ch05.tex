@@ -1,0 +1,270 @@
+\chapter{Optimizing the Square Size: Feasibility and Joint Optimization}
+
+Up to this point, simulated annealing has been used to optimize circle positions
+inside a \emph{fixed} square of side length $L$.
+We now address a more fundamental geometric question:
+
+\begin{quote}
+What is the smallest square side length $L^\star$ for which $N$ identical circles
+of radius $r$ can be packed without overlap?
+\end{quote}
+
+This chapter develops two complementary solver strategies:
+
+\begin{enumerate}
+\item \textbf{Feasibility search}: treat $L$ as a parameter, test feasibility via SA,
+      and search for the minimal feasible $L$.
+\item \textbf{Joint optimization}: include $L$ directly in the optimization state
+      and minimize a soft energy that trades off feasibility and size.
+\end{enumerate}
+
+Both approaches are built using the same inquiry-driven workflow:
+\[
+\text{Geometry} \;\longrightarrow\; \text{Invariant} \;\longrightarrow\;
+\text{Test} \;\longrightarrow\; \text{Code}.
+\]
+
+Throughout, we distinguish between:
+\begin{itemize}
+\item \emph{guaranteed bounds} derived from geometry, and
+\item \emph{heuristic behavior} introduced by stochastic optimization.
+\end{itemize}
+
+%--------------------------------------------------------------------
+\section{Why Optimizing $L$ Is Hard}
+
+Packing problems are inherently nonconvex.
+Even for fixed $L$, feasibility is not a simple constraint satisfaction problem;
+it must be discovered algorithmically.
+
+Optimizing $L$ adds a second layer of difficulty:
+\begin{itemize}
+\item reducing $L$ increases boundary pressure,
+\item smaller $L$ amplifies overlap penalties,
+\item feasibility becomes a probabilistic outcome of the inner solver.
+\end{itemize}
+
+We therefore separate the problem into two solver paradigms.
+
+%--------------------------------------------------------------------
+\section{Approach I: Feasibility Search}
+
+\subsection{Problem Formulation}
+
+For a fixed $L$, define \emph{feasibility} as:
+\[
+E_{\text{pair}}(X) = 0 \quad\text{and}\quad E_{\text{wall}}(X,L) = 0.
+\]
+
+Numerically, we test:
+\[
+E_{\text{pair}}(X) \le \varepsilon, \qquad
+E_{\text{wall}}(X,L) \le \varepsilon,
+\]
+for a small tolerance $\varepsilon$.
+
+The feasibility solver asks:
+\begin{quote}
+For which values of $L$ does simulated annealing find a feasible configuration?
+\end{quote}
+
+This motivates an outer search in $L$.
+
+%--------------------------------------------------------------------
+\subsection{Guaranteed Lower Bounds}
+
+Before running any optimization, geometry alone already constrains $L$.
+
+\subsubsection{Diameter Bound}
+
+At minimum, a single circle must fit:
+\[
+L \ge 2r.
+\]
+This is a trivial but unavoidable constraint.
+
+\subsubsection{Area Bound}
+
+The total area of all circles is:
+\[
+A_{\text{circles}} = N\pi r^2.
+\]
+Since the square has area $L^2$, any feasible packing must satisfy:
+\[
+L^2 \ge N\pi r^2
+\quad\Rightarrow\quad
+L \ge r\sqrt{N\pi}.
+\]
+
+This bound is \emph{necessary} and therefore guaranteed.
+
+\subsubsection{Density-Aware Bound (Optional)}
+
+The maximal packing density of equal circles in the plane is
+\[
+\delta_{\max} = \frac{\pi}{2\sqrt{3}} \approx 0.9069.
+\]
+Even ignoring boundary effects,
+\[
+L^2 \ge \frac{N\pi r^2}{\delta_{\max}}
+\quad\Rightarrow\quad
+L \ge r\sqrt{\frac{N\pi}{\delta_{\max}}}.
+\]
+
+Boundary effects only reduce achievable density, so this remains a valid lower bound.
+
+\paragraph{Combined lower bound.}
+In practice, we use:
+\[
+L_{\text{lo}} = \max\!\left(2r,\; r\sqrt{N\pi}\right),
+\]
+optionally replacing the area bound with the density-aware bound.
+
+%--------------------------------------------------------------------
+\subsection{Guaranteed Upper Bounds}
+
+Lower bounds alone are insufficient; feasibility search also requires
+a value of $L$ that is \emph{known} to be feasible.
+
+\subsubsection{Grid Construction}
+
+A simple constructive packing places circles on a square grid
+with spacing $2r$:
+\[
+x_{ij} = \bigl(r + 2ri,\; r + 2rj\bigr).
+\]
+
+Let
+\[
+k = \lceil\sqrt{N}\rceil.
+\]
+Then a $k\times k$ grid fits inside a square of side length:
+\[
+L_{\text{grid}} = 2rk.
+\]
+
+This configuration has:
+\[
+E_{\text{pair}} = 0, \qquad E_{\text{wall}} = 0,
+\]
+and therefore provides a \emph{constructive feasibility witness}.
+
+\paragraph{Upper bound.}
+We set:
+\[
+L_{\text{hi}} = 2r\lceil\sqrt{N}\rceil.
+\]
+
+This bound is crude but guaranteed and deterministic.
+
+%--------------------------------------------------------------------
+\subsection{Outer Bisection on $L$}
+
+With a bracket $[L_{\text{lo}}, L_{\text{hi}}]$ in hand, we perform
+an outer bisection search.
+
+\begin{enumerate}
+\item Set $L_{\text{mid}} = \tfrac12(L_{\text{lo}} + L_{\text{hi}})$.
+\item Run simulated annealing at fixed $L_{\text{mid}}$.
+\item If a feasible configuration is found:
+      \begin{itemize}
+      \item record the witness,
+      \item set $L_{\text{hi}} \leftarrow L_{\text{mid}}$.
+      \end{itemize}
+\item Otherwise, set $L_{\text{lo}} \leftarrow L_{\text{mid}}$.
+\end{enumerate}
+
+Because simulated annealing is stochastic, feasibility is a
+\emph{probabilistic predicate}. To reduce false negatives,
+the solver may retry each $L_{\text{mid}}$ with multiple deterministic seeds.
+
+The algorithm terminates when:
+\[
+L_{\text{hi}} - L_{\text{lo}} \le \text{tolerance}.
+\]
+
+%--------------------------------------------------------------------
+\section{Approach II: Joint Optimization of $(X,L)$}
+
+An alternative is to optimize positions and box size simultaneously.
+
+\subsection{Energy Model}
+
+We define a soft objective:
+\[
+E(X,L) = E_{\text{pair}}(X) + E_{\text{wall}}(X,L) + \alpha L,
+\]
+with $\alpha > 0$ controlling the pressure to shrink the square.
+
+Key properties:
+\begin{itemize}
+\item $E(X,L) \ge 0$ always,
+\item feasibility corresponds to $E_{\text{pair}} = E_{\text{wall}} = 0$,
+\item reducing $L$ is rewarded only when geometry allows it.
+\end{itemize}
+
+\subsection{Joint Proposal Kernel}
+
+The state space is now $(X,L)$.
+At each SA step:
+\begin{itemize}
+\item with probability $p$, propose a move of a single circle position,
+\item with probability $1-p$, propose a move in $L$:
+      \[
+      L' = \max(2r,\; L + \delta_L), \qquad \delta_L \sim \mathcal{N}(0,\sigma_L^2).
+      \]
+\end{itemize}
+
+Acceptance is handled by the same Metropolis rule using the correct $\Delta E$.
+
+\subsection{Interpretation}
+
+Joint optimization replaces hard feasibility with a soft competition:
+\begin{itemize}
+\item early at high temperature, $L$ can shrink aggressively,
+\item overlaps and wall violations are temporarily tolerated,
+\item at low temperature, only feasible shrinkage survives.
+\end{itemize}
+
+Unlike feasibility search, this approach produces a \emph{single trajectory}
+rather than an outer–inner loop, but its outcome depends sensitively on $\alpha$
+and the proposal scales.
+
+%--------------------------------------------------------------------
+\section{Comparison of the Two Approaches}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & Feasibility Search & Joint Optimization \\
+\midrule
+Guarantees & Explicit feasibility & Soft, parameter-dependent \\
+Bounds & Required & Not required \\
+Complexity & Outer $\times$ inner & Single SA run \\
+Interpretability & Clear witnesses & Continuous trade-off \\
+Sensitivity & Low (with retries) & High ($\alpha$, $\sigma_L$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In practice:
+\begin{itemize}
+\item feasibility search is preferable when correctness and reproducibility matter;
+\item joint optimization is useful for exploratory or heuristic searches.
+\end{itemize}
+
+%--------------------------------------------------------------------
+\section{Checkpoint}
+
+At the end of this chapter, you should be able to:
+
+\begin{itemize}
+\item derive guaranteed lower and upper bounds for $L^\star$;
+\item construct feasibility witnesses without optimization;
+\item implement an outer bisection loop driven by simulated annealing;
+\item understand the trade-offs of joint $(X,L)$ optimization;
+\item distinguish mathematical guarantees from heuristic behavior.
+\end{itemize}
+
+In the next chapter, we revisit these solvers from a gradient-based perspective
+and contrast stochastic annealing with deterministic optimization methods.

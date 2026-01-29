@@ -1,0 +1,265 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\geometry{margin=1in}
+
+\title{A Diagnostic Smoke Test for Simulated Annealing\\
+       in 2D Circle Packing}
+\author{ }
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Purpose and Scope}
+
+This report documents a \emph{diagnostic smoke run} of a correctness-first
+simulated annealing (SA) implementation for packing identical circles
+in a square container.
+The goal of the run is not optimality or performance, but
+\textbf{observability}:
+to verify that the algorithm behaves consistently with theoretical
+expectations and to understand how temperature, proposals, and penalties
+interact over time.
+
+All quantities shown here are produced automatically by the codebase,
+including per-step logging and post-processing plots.
+
+\section{Problem Setup}
+
+We consider packing $N$ identical circles of radius $r$ in a square
+container of side length $L$.
+A configuration is given by
+\[
+X = \{x_i \in \mathbb{R}^2 : i=1,\dots,N\}.
+\]
+
+The total energy is
+\[
+E(X,L) = E_{\text{pair}}(X) + E_{\text{wall}}(X,L) + \alpha L,
+\]
+where $E_{\text{pair}}$ penalizes overlaps and $E_{\text{wall}}$
+penalizes boundary violations.
+In this baseline run, $L$ is fixed and $\alpha=0$.
+
+\subsection{Run Parameters}
+
+The smoke run reported here uses:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Number of circles & $N = 20$ \\
+Circle radius & $r = 1.0$ \\
+Box side length & $L = 20.0$ \\
+Initial temperature & $T_0 = 2.0$ \\
+Cooling factor & $\gamma = 0.99995$ \\
+Number of steps & $n_{\text{steps}} = 8\times 10^5$ \\
+Proposal scale & $\sigma = 0.30$ \\
+Random seed & $123$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The run is designed to complete in under five minutes on typical hardware.
+
+\section{Initial Conditions}
+
+\subsection{Initial Position}
+
+The initial configuration $X_0$ is generated randomly using a seeded
+pseudo-random number generator.
+
+If $L - 2r > 0$, each coordinate is sampled independently from the
+interior window:
+\[
+x_i \sim \mathrm{Uniform}(r, L-r), \qquad
+y_i \sim \mathrm{Uniform}(r, L-r).
+\]
+
+Otherwise (degenerate case), sampling falls back to
+\[
+x_i, y_i \sim \mathrm{Uniform}(0, L).
+\]
+
+Thus, the initialization is \textbf{uniform, interior, and deterministic}
+given the seed.
+
+\subsection{Initial Box Length}
+
+The box side length is set by the input parameter $L$ and remains
+fixed throughout the run.
+For this experiment,
+\[
+L = 20.0.
+\]
+
+No dynamic resizing of the container is performed in this baseline.
+
+\section{Annealing Schedule and Runtime}
+
+\subsection{Algorithmic Duration}
+
+The algorithm executes exactly $n_{\text{steps}}$ Metropolis proposals.
+In this run,
+\[
+n_{\text{steps}} = 8\times 10^5.
+\]
+
+\subsection{Computational Cost}
+
+Each proposal updates exactly one circle.
+The incremental energy computation scales as
+\[
+\mathcal{O}(N),
+\]
+so the total computational work scales approximately as
+\[
+\mathcal{O}(n_{\text{steps}} \cdot N).
+\]
+
+\subsection{Cooling Schedule}
+
+A geometric cooling schedule is used:
+\[
+T_{t+1} = \gamma T_t,
+\qquad
+T_t = T_0 \gamma^t.
+\]
+
+For this run,
+\[
+T_0 = 2.0, \qquad \gamma = 0.99995.
+\]
+
+The temperature half-life is
+\[
+t_{1/2} = \frac{\ln(1/2)}{\ln(\gamma)} \approx 13{,}860 \text{ steps},
+\]
+which yields a slow, steady cooling over the duration of the run.
+
+\section{Logged Quantities and Diagnostics}
+
+At every Metropolis step, the following quantities are logged:
+
+\begin{itemize}
+\item step index,
+\item total energy $E$,
+\item temperature $T$,
+\item pair overlap energy $E_{\text{pair}}$,
+\item wall penalty energy $E_{\text{wall}}$,
+\item acceptance indicator (0/1),
+\item index of the proposed circle.
+\end{itemize}
+
+This full-resolution logging enables detailed post-hoc analysis.
+
+\section{Results and Plots}
+
+\subsection{Energy, Temperature, Acceptance, and Penalties}
+
+Figure~\ref{fig:main-panels} shows four diagnostic panels side by side:
+
+\begin{enumerate}
+\item Total energy and best-so-far energy versus step.
+\item Temperature versus step (log scale).
+\item Rolling acceptance rate.
+\item Pair and wall energy components versus step.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{../../sa_circlepack/out/sa_better_smoke/sa_better_smoke_plots.png}
+\caption{Main diagnostic panels for the simulated annealing run.}
+\label{fig:main-panels}
+\end{figure}
+
+As expected:
+\begin{itemize}
+\item $E_{\text{pair}}$ drops rapidly early, indicating resolution of overlaps.
+\item $E_{\text{wall}}$ reflects boundary interactions and stabilizes later.
+\item The total energy decreases monotonically in its best-so-far envelope.
+\item The acceptance rate decreases as temperature cools.
+\end{itemize}
+
+\subsection{Energy Change Distribution}
+
+Figure~\ref{fig:de-hist} shows the distribution of
+\[
+\Delta E_t = E(t) - E(t-1).
+\]
+
+Early in the run, the distribution is broad, while late in the run it
+concentrates near zero, reflecting freezing of the dynamics.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{../../sa_circlepack/out/sa_better_smoke/sa_better_smoke_dE.png}
+\caption{Distribution of energy changes $\Delta E$.}
+\label{fig:de-hist}
+\end{figure}
+
+\subsection{Moved Index Histogram}
+
+Figure~\ref{fig:moved-hist} shows the histogram of proposed circle indices.
+The distribution is approximately uniform, confirming unbiased selection.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{../../sa_circlepack/out/sa_better_smoke/sa_better_smoke_moved.png}
+\caption{Histogram of moved circle indices.}
+\label{fig:moved-hist}
+\end{figure}
+
+\section{Role of Temperature}
+
+Temperature affects \emph{only} the acceptance of uphill moves.
+For $\Delta E > 0$,
+\[
+\mathbb{P}(\text{accept}) = \exp(-\Delta E / T).
+\]
+
+Thus:
+\begin{itemize}
+\item High $T$: frequent uphill acceptance $\Rightarrow$ exploration.
+\item Low $T$: rare uphill acceptance $\Rightarrow$ exploitation and freezing.
+\end{itemize}
+
+Importantly, temperature does \emph{not} modify the proposal distribution.
+Proposals are always drawn from
+\[
+\delta \sim \mathcal{N}(0, \sigma^2 I),
+\]
+with fixed $\sigma$.
+Temperature acts as a probabilistic filter on these proposals.
+
+\section{Discussion and Recommendations}
+
+With aggressive cooling (e.g.\ $\gamma=0.999$), temperature halves quickly,
+and the algorithm becomes greedy early.
+The slower cooling used here provides better separation between exploration
+and exploitation phases and produces more interpretable diagnostics.
+
+Possible next steps include:
+\begin{itemize}
+\item adaptive proposal scaling,
+\item dynamic logging stride,
+\item joint optimization of $(X,L)$,
+\item incremental logging of $\Delta E$.
+\end{itemize}
+
+\section{Conclusion}
+
+This smoke run confirms that the simulated annealing implementation
+behaves consistently with theoretical expectations.
+The instrumentation allows direct interpretation of geometric and
+stochastic effects, providing a solid foundation for further optimization
+and scaling.
+
+\end{document}

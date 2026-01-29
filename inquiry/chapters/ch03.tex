@@ -9,7 +9,7 @@ This chapter develops stochastic gradient descent (SGD) and the Adam optimizer t
 
 Consider the finite-sum optimization problem
 \[
-\min_{heta \in \mathbb{R}^d} ; F(\theta) := \frac{1}{N} \sum_{i=1}^N f_i(\theta).
+\min_{\theta \in \mathbb{R}^d} F(\theta) := \frac{1}{N} \sum_{i=1}^N f_i(\theta).
 \]
 \subsection{Inquiry}
 \begin{itemize}
@@ -20,21 +20,21 @@ Consider the finite-sum optimization problem
 
 This leads to stochastic gradients. Given a random index $i_k$, define
 \[
-g_k := \nabla f_{i_k}(heta_k).
+g_k := \nabla f_{i_k}(\theta_k).
 \]
-Then $\mathbb{E}[g_k] = \nabla F(heta_k)$, but $g_k$ has nonzero variance.
+Then $\mathbb{E}[g_k] = \nabla F(\theta_k)$, but $g_k$ has nonzero variance.
 
 \section{Stochastic Gradient Descent}
 
 The SGD iteration is
 \[
-heta_{k+1} = heta_k - \eta_k g_k.
+\theta_{k+1} = \theta_k - \eta_k g_k.
 \]
 \subsection{Inquiry}
 \begin{itemize}
 \item Why does SGD converge despite noisy gradients?
 \item What role does the learning rate $\eta_k$ play?
-\item Why must $\eta_k o 0$ in theory but not always in practice?
+\item Why must $\eta_k \to 0$ in theory but not always in practice?
 \end{itemize}
 
 \subsection{Key Phenomena}
@@ -49,7 +49,7 @@ heta_{k+1} = heta_k - \eta_k g_k.
 To reduce variance and accelerate convergence, introduce momentum:
 \begin{align*}
 v_{k+1} &= \beta v_k + (1-\beta) g_k, \\
-heta_{k+1} &= heta_k - \eta v_{k+1}.
+	heta_{k+1} &= \theta_k - \eta v_{k+1}.
 \end{align*}
 
 \subsection{Inquiry}
@@ -97,7 +97,7 @@ Bias correction:
 \]
 Update:
 \[
-heta_{k+1} = heta_k - \eta \frac{\hat m_{k+1}}{\sqrt{\hat v_{k+1}} + \varepsilon}.
+\theta_{k+1} = \theta_k - \eta \frac{\hat m_{k+1}}{\sqrt{\hat v_{k+1}} + \varepsilon}.
 \]
 \subsection{Inquiry}
 \begin{itemize}
@@ -139,7 +139,20 @@ Check that Adam converges to the minimizer of $f(\theta)=|\theta|^2$ from random
 
 \begin{center}
 \begin{tabular}{ll}
-\textbf{Symptom} & \textbf{Cause} \\
+\textbf{Symptom} & \textbf{Cause} \\\
+\hline
+\begin{tabular}{ll}
+	extbf{Symptom} & \textbf{Cause} \\
+\hline
+Divergence & Learning rate too large \\
+Slow convergence & $\beta_1$ too small \\
+Parameter drift & $\beta_2$ too large \\
+Poor generalization & Excessive adaptivity
+\end{tabular}
+\end{tabular}
+\begin{center}
+\begin{tabular}{ll}
+	extbf{Symptom} & \textbf{Cause} \\
 \hline
 Divergence & Learning rate too large \\
 Slow convergence & $\beta_1$ too small \\
@@ -147,7 +160,3 @@ Parameter drift & $\beta_2$ too large \\
 Poor generalization & Excessive adaptivity
 \end{tabular}
 \end{center}
-
-\section{Conceptual Summary}
-
-Stochastic gradient methods trade deterministic descent for scalable, noise-tolerant optimization. Adam succeeds by combining three ideas: stochasticity for exploration, momentum for acceleration, and adaptive scaling for numerical stability. Understanding these components independently is essential for using Adam responsibly rather than as a black box.

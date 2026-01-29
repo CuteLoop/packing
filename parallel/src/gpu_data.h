@@ -55,6 +55,9 @@ void gpu_sync_metadata(
 
 void gpu_init_rng(DeviceSoA* soa, int n_chains, unsigned long long seed);
 
+void gpu_sync_rng(DeviceSoA* dev_soa, void* host_rng, int n_chains, bool to_gpu);
+void gpu_sync_accept(DeviceSoA* dev_soa, int* host_accept, int n_chains);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,80 @@
+% ch_collision_bench.tex
+% Chapter: Collision Benchmark
+
+\chapter{Collision Benchmark and Narrowphase Analysis}
+
+\section{Overview}
+This chapter documents the microbenchmark used to compare three narrowphase collision methods for convex parts generated from a packed tree-shaped polygon.
+
+The three methods compared:
+\begin{enumerate}
+\item Triangulation-based triangle-triangle intersection (A)
+\item Convex SAT baseline: per-call world transform + recompute edge normals (B)
+\item Cached Convex SAT: cached world vertices + cached rotated axes + per-part AABBs and hint-axis filters (C)
+\end{enumerate}
+
+\section{Metrics}
+We record the following for each run:
+\begin{itemize}
+  \item \textbf{Pairs total}: number of instance pairs evaluated.
+  \item \textbf{Broadphase pass}: number of pairs passing instance AABB check.
+  \item \textbf{Narrow calls}: number of narrowphase invocations (after broadphase).
+  \item \textbf{Collisions}: number of colliding pairs detected.
+  \item \textbf{Time}: wall-clock seconds for the run.
+  \item \textbf{Mpairs/s}: million pairs processed per second (pairs / time / 1e6).
+\end{itemize}
+
+For the cached narrowphase (C) we additionally collect:
+\begin{itemize}
+  \item \textbf{Part pairs}: total per-part pair checks (instances * parts$^2$ sampled by AABB/pass logic).
+  \item \textbf{Part AABB pass}: number of per-part AABB overlaps (fast reject/accept filter).
+  \item \textbf{Hint-axis tests}: number of cheap hint-axis projections executed.
+  \item \textbf{Hint-axis rejects}: number of pairs safely rejected by hint axes.
+  \item \textbf{SAT full calls}: number of full SAT calls performed.
+  \item \textbf{SAT hits}: number of SAT calls that found an intersection.
+  \item \textbf{SAT axes tested}: total axes tested across SAT calls.
+\end{itemize}
+
+\section{Results Tables}
+Replace the placeholders with values exported from the CSV produced by the benchmark.
+
+\subsection{Per-method summary}
+\begin{tabular}{lrrrrr}
+\hline
+Method & pairs & broadpass & narrow & collisions & time (s) \\
+\hline
+Triangle (A) & \_ & \_ & \_ & \_ & \_ \\
+SAT baseline (B) & \_ & \_ & \_ & \_ & \_ \\
+SAT cached (C) & \_ & \_ & \_ & \_ & \_ \\
+\hline
+\end{tabular}
+
+\subsection{Cached narrowphase breakdown (C)}
+\begin{tabular}{lrrrr}
+\hline
+Metric & value \\
+\hline
+Part pairs & \_ \\
+Part AABB pass & \_ \\
+Hint tests & \_ \\
+Hint rejects & \_ \\
+SAT full calls & \_ \\
+SAT hits & \_ \\
+SAT axes tested & \_ \\
+Avg axes / SAT & \_ \\
+\hline
+\end{tabular}
+
+\section{Interpretation}
+Discuss how per-part AABB filtering and cheap hint axes reduce the number of expensive SAT calls, and how caching rotated world axes and world vertices removes repeated work.
+
+\section{Reproducibility}
+Run the benchmark binary produced by the repository with the following example:
+\begin{verbatim}
+./bench 2000 20000000 out.csv
+\end{verbatim}
+
+The generated CSV can be aggregated into the above tables. A separate script can be used to plot Mpairs/s and speedup ratios.
+
+\section{Notes}
+The cached method must rotate per-part local axes into world space for correctness; this chapter documents measured axis counts to show why caching + filters improves throughput.

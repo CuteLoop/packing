@@ -1,36 +1,50 @@
 \relax 
 \providecommand\hyper@newdestlabel[2]{}
-\@writefile{toc}{\contentsline {chapter}{\numberline {6}Discrete Formulations of Packing via Independent Sets}{35}{chapter.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {7}C Implementation of Feasibility and Joint Optimization Solvers}{38}{chapter.7}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\newlabel{chap:discrete-packing-mis}{{6}{35}{Discrete Formulations of Packing via Independent Sets}{chapter.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6.1}From Continuous Packing to Discrete Candidates}{35}{section.6.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1.1}Candidate placements}{35}{subsection.6.1.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1.2}Conflict detection}{36}{subsection.6.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.2}Graph Construction}{36}{section.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.3}Packing as an Independent Set Problem}{36}{section.6.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3.1}Maximum vs.\ maximal independent sets}{36}{subsection.6.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.4}Integer Linear Programming Formulation}{37}{section.6.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.1}Binary decision variables}{37}{subsection.6.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.2}MILP formulation}{37}{subsection.6.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.5}LP Relaxation and Its Interpretation}{37}{section.6.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.5.1}LP relaxation}{38}{subsection.6.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.6}Algorithmic Solution via Constraint Generation}{38}{section.6.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.6.1}Lazy constraint generation}{38}{subsection.6.6.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.6.2}Transition to integer solutions}{39}{subsection.6.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.7}Interpretation and Scope}{39}{section.6.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.1}Design Principles for the Extension}{38}{section.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.2}New Supporting Primitives}{39}{section.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2.1}Feasibility Predicate}{39}{subsection.7.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Definition.}{39}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{C interface.}{39}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Design notes.}{39}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tests.}{39}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2.2}Lower and Upper Bounds on $L$}{40}{subsection.7.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Lower bounds}{40}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Upper bound via grid construction}{40}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{C interface.}{40}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tests.}{40}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.3}Feasibility Solver in C}{41}{section.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3.1}High-Level Structure}{41}{subsection.7.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Interface.}{41}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Algorithm.}{41}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Handling stochasticity.}{41}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Diagnostics.}{41}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.4}Joint Optimization Solver in C}{42}{section.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4.1}Extended State Space}{42}{subsection.7.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{State variables.}{42}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Energy.}{42}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4.2}Proposal Kernel}{42}{subsection.7.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4.3}C Interface}{42}{subsection.7.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Trace logging.}{42}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.5}Testing Strategy}{43}{section.7.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5.1}Mathematical tests}{43}{subsection.7.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5.2}Algorithmic tests}{43}{subsection.7.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5.3}Empirical sanity checks}{43}{subsection.7.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.6}Checkpoint}{43}{section.7.6}\protected@file@percent }
 \@setckpt{chapters/ch06}{
-\setcounter{page}{40}
-\setcounter{equation}{6}
-\setcounter{enumi}{5}
-\setcounter{enumii}{0}
+\setcounter{page}{45}
+\setcounter{equation}{0}
+\setcounter{enumi}{2}
+\setcounter{enumii}{4}
 \setcounter{enumiii}{0}
 \setcounter{enumiv}{0}
 \setcounter{footnote}{0}
 \setcounter{mpfootnote}{0}
 \setcounter{part}{0}
-\setcounter{chapter}{6}
-\setcounter{section}{7}
+\setcounter{chapter}{7}
+\setcounter{section}{6}
 \setcounter{subsection}{0}
 \setcounter{subsubsection}{0}
 \setcounter{paragraph}{0}
@@ -38,14 +52,14 @@
 \setcounter{figure}{0}
 \setcounter{table}{0}
 \setcounter{parentequation}{0}
-\setcounter{theorem}{3}
+\setcounter{theorem}{0}
 \setcounter{caption@flags}{0}
 \setcounter{continuedfloat}{0}
 \setcounter{subfigure}{0}
 \setcounter{subtable}{0}
 \setcounter{NAT@ctr}{0}
 \setcounter{section@level}{1}
-\setcounter{Item}{34}
+\setcounter{Item}{47}
 \setcounter{Hfootnote}{0}
-\setcounter{bookmark@seq@number}{134}
+\setcounter{bookmark@seq@number}{132}
 }

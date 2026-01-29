@@ -127,3 +127,18 @@ extern "C" void gpu_sync_metadata(
         CUDA_CHECK(cudaMemcpy(host_temp, dev_soa->temperature, MAX_CHAINS * sizeof(float), cudaMemcpyDeviceToHost));
     }
 }
+
+extern "C" void gpu_sync_rng(DeviceSoA* dev_soa, void* host_rng, int n_chains, bool to_gpu)
+{
+    size_t bytes = (size_t)n_chains * sizeof(curandState);
+    if (to_gpu) {
+        CUDA_CHECK(cudaMemcpy(dev_soa->rng, host_rng, bytes, cudaMemcpyHostToDevice));
+    } else {
+        CUDA_CHECK(cudaMemcpy(host_rng, dev_soa->rng, bytes, cudaMemcpyDeviceToHost));
+    }
+}
+
+extern "C" void gpu_sync_accept(DeviceSoA* dev_soa, int* host_accept, int n_chains)
+{
+    CUDA_CHECK(cudaMemcpy(host_accept, dev_soa->accept_count, n_chains * sizeof(int), cudaMemcpyDeviceToHost));
+}

@@ -1,7 +1,7 @@
 \chapter{Test-Driven Adam in C (From Scratch)}
 
 \section*{Purpose}
-This chapter is a correctness-first, test-driven implementation of the Adam optimizer in exttt{C}. The emphasis is on:
+This chapter is a correctness-first, test-driven implementation of the Adam optimizer in \texttt{C}. The emphasis is on:
 \begin{itemize}
 \item a minimal, auditable implementation (no external ML frameworks),
 \item deterministic behavior and numerical stability,
@@ -13,7 +13,7 @@ This chapter is a correctness-first, test-driven implementation of the Adam opti
 How do we implement Adam in plain C so that (i) every mathematical step is testable, and (ii) the code is suitable as a performance baseline for later optimization?
 
 \section{Scope and Assumptions}
-We optimize parameters $heta\in\mathbb{R}^d$ given a gradient vector $g\in\mathbb{R}^d$ supplied by a \emph{gradient oracle}. This chapter focuses on the optimizer only. We will implement:
+We optimize parameters $\theta\in\mathbb{R}^d$ given a gradient vector $g\in\mathbb{R}^d$ supplied by a \emph{gradient oracle}. This chapter focuses on the optimizer only. We will implement:
 \begin{itemize}
 \item Adam state and update step;
 \item optional weight decay (decoupled AdamW form);
@@ -24,27 +24,27 @@ We optimize parameters $heta\in\mathbb{R}^d$ given a gradient vector $g\in\mathb
 \section{Mathematical Specification}
 Given hyperparameters $\eta>0$, $\beta_1,\beta_2\in(0,1)$, and $\varepsilon>0$, Adam performs:
 \begin{align*}
-m_t &= \beta_1 m_{t-1} + (1-\beta_1) g_t,\
-v_t &= \beta_2 v_{t-1} + (1-\beta_2) g_t^{\odot 2},\
-\hat m_t &= \frac{m_t}{1-\beta_1^t},\qquad \hat v_t = \frac{v_t}{1-\beta_2^t},\
-heta_t &= heta_{t-1} - \eta, \frac{\hat m_t}{\sqrt{\hat v_t}+\varepsilon}.
+m_t &= \beta_1 m_{t-1} + (1-\beta_1) g_t,\\
+v_t &= \beta_2 v_{t-1} + (1-\beta_2) g_t^{\odot 2},\\
+\hat m_t &= \frac{m_t}{1-\beta_1^t},\qquad \hat v_t = \frac{v_t}{1-\beta_2^t},\\
+	heta_t &= \theta_{t-1} - \eta \frac{\hat m_t}{\sqrt{\hat v_t}+\varepsilon}.
 \end{align*}
 All operations are elementwise except scalar multiplications.
 
 \subsection{AdamW (Decoupled Weight Decay)}
 If using AdamW with weight decay $\lambda\ge 0$:
 \[
-heta_t \leftarrow heta_t - \eta, \lambda, heta_{t-1}
+	heta_t \leftarrow \theta_{t-1} - \eta \lambda \theta_{t-1}
 \]
-\emph{in addition to} the Adam step above. (Decoupled decay is preferred over adding $\lambdaheta$ to gradients.)
+\emph{in addition to} the Adam step above. (Decoupled decay is preferred over adding $\lambda \theta$ to gradients.)
 
 \section{Design Requirements (What Must Be True)}
 \begin{enumerate}
-\item extbf{Bias correction correctness:} first few steps must match the analytic formulas.
-\item extbf{Second moment non-negativity:} $v_t[i]\ge 0$ always.
-\item extbf{Epsilon placement:} $\varepsilon$ is added \emph{outside} the square root: $\sqrt{\hat v}+\varepsilon$.
-\item extbf{No hidden allocations:} all buffers are allocated by the caller or in init.
-\item extbf{Deterministic stepping:} given the same inputs, the update is bitwise deterministic (within floating-point expectations across compilers).
+\item \textbf{Bias correction correctness:} first few steps must match the analytic formulas.
+\item \textbf{Second moment non-negativity:} $v_t[i]\ge 0$ always.
+\item \textbf{Epsilon placement:} $\varepsilon$ is added \emph{outside} the square root: $\sqrt{\hat v}+\varepsilon$.
+\item \textbf{No hidden allocations:} all buffers are allocated by the caller or in init.
+\item \textbf{Deterministic stepping:} given the same inputs, the update is bitwise deterministic (within floating-point expectations across compilers).
 \end{enumerate}
 
 \section{Project Skeleton}
@@ -120,8 +120,8 @@ adam_t *m_buf, adam_t *v_buf);
 // reset moments and time
 void adam_reset(adam_opt_t *opt);
 
-// single step: theta and grad are length d
-void adam_step(adam_opt_t *opt, adam_t *theta, const adam_t *grad);
+// single step: t\theta and grad are length d
+void adam_step(adam_opt_t *opt, adam_t *t\theta, const adam_t *grad);
 \end{verbatim}
 
 \section{Implementation (Reference)}
@@ -172,7 +172,7 @@ opt->v[i] = (adam_t)0;
 #include "adam.h"
 #include <math.h>
 
-void adam_step(adam_opt_t *opt, adam_t *theta, const adam_t *grad) {
+void adam_step(adam_opt_t *opt, adam_t *t\theta, const adam_t *grad) {
 const size_t d = opt->d;
 
 // t := t + 1 and update cached powers
@@ -193,7 +193,7 @@ const adam_t inv_bias2 = one / (one - opt->beta2_pow);
 if (opt->weight_decay != (adam_t)0) {
 const adam_t wd = opt->weight_decay;
 for (size_t i = 0; i < d; ++i) {
-theta[i] -= lr * wd * theta[i];
+t\theta[i] -= lr * wd * t\theta[i];
 }
 }
 
@@ -212,7 +212,7 @@ const adam_t mhat = m * inv_bias1;
 const adam_t vhat = v * inv_bias2;
 
 // epsilon outside sqrt
-theta[i] -= lr * (mhat / (sqrt(vhat) + eps));
+t\theta[i] -= lr * (mhat / (sqrt(vhat) + eps));
 
 }
 }
@@ -248,7 +248,7 @@ exit(1);
 \section{TDD Exercise Sequence}
 
 \subsection{Exercise 1: Bias Correction on Constant Gradient}
-extbf{Goal:} catch the most common Adam bug.
+\textbf{Goal:} catch the most common Adam bug.
 
 Set $g_t \equiv g$ constant, $m_0=v_0=0$. Show analytically:
 \[
@@ -256,9 +256,9 @@ m_t = (1-\beta_1^t)g,\quad \hat m_t = g.
 \]
 Similarly $\hat v_t = g^2$. Therefore the update should be
 \[
-heta_t = heta_{t-1} - \eta, \frac{g}{|g|+\varepsilon}.
+\theta_t = \theta_{t-1} - \eta, \frac{g}{|g|+\varepsilon}.
 \]
-extbf{Test:} in 1D, with $g=2$, verify the very first step matches the formula within tolerance.
+\textbf{Test:} in 1D, with $g=2$, verify the very first step matches the formula within tolerance.
 
 \subsection*{tests/test_adam_bias.c}
 \begin{verbatim}
@@ -271,21 +271,21 @@ adam_opt_t opt;
 ASSERT_TRUE(adam_init(&opt, 1, (adam_t)0.1, (adam_t)0.9, (adam_t)0.999,
 (adam_t)1e-8, (adam_t)0.0, m, v) == 0);
 
-adam_t theta[1] = {(adam_t)1.0};
+adam_t t\theta[1] = {(adam_t)1.0};
 const adam_t grad[1] = {(adam_t)2.0};
 
-adam_step(&opt, theta, grad);
+adam_step(&opt, t\theta, grad);
 
 // For constant g, bias-corrected mhat=g and vhat=g^2 at t=1.
 const adam_t expected = (adam_t)1.0 - (adam_t)0.1 * ((adam_t)2.0 / ((adam_t)2.0 + (adam_t)1e-8));
-ASSERT_NEAR(theta[0], expected, 1e-12);
+ASSERT_NEAR(t\theta[0], expected, 1e-12);
 
 return 0;
 }
 \end{verbatim}
 
 \subsection{Exercise 2: Second Moment Non-Negativity}
-extbf{Test:} feed arbitrary gradients and verify $v[i] \ge 0$ always.
+\textbf{Test:} feed arbitrary gradients and verify $v[i] \ge 0$ always.
 
 \subsection*{tests/test_adam_moments.c}
 \begin{verbatim}
@@ -299,13 +299,13 @@ adam_opt_t opt;
 ASSERT_TRUE(adam_init(&opt, d, (adam_t)1e-2, (adam_t)0.9, (adam_t)0.99,
 (adam_t)1e-8, (adam_t)0.0, m, v) == 0);
 
-adam_t theta[d];
+adam_t t\theta[d];
 adam_t g[d];
-for (int i = 0; i < d; ++i) { theta[i] = (adam_t)0; g[i] = (adam_t)(i - 3); }
+for (int i = 0; i < d; ++i) { t\theta[i] = (adam_t)0; g[i] = (adam_t)(i - 3); }
 
 for (int k = 0; k < 100; ++k) {
 for (int i = 0; i < d; ++i) g[i] = (adam_t)((k + 1) * (i - 3));
-adam_step(&opt, theta, g);
+adam_step(&opt, t\theta, g);
 for (int i = 0; i < d; ++i) ASSERT_TRUE(opt.v[i] >= (adam_t)0);
 }
 
@@ -314,12 +314,12 @@ return 0;
 \end{verbatim}
 
 \subsection{Exercise 3: Epsilon Placement Regression Test}
-extbf{Goal:} ensure $\sqrt{\hat v}+\varepsilon$ and not $\sqrt{\hat v+\varepsilon}$.
+\textbf{Goal:} ensure $\sqrt{\hat v}+\varepsilon$ and not $\sqrt{\hat v+\varepsilon}$.
 
-extbf{Test idea:} choose $\hat v$ extremely small (e.g. gradient nearly zero) so that the two expressions differ measurably.
+\textbf{Test idea:} choose $\hat v$ extremely small (e.g. gradient nearly zero) so that the two expressions differ measurably.
 
 \subsection{Exercise 4: AdamW Decoupled Weight Decay}
-extbf{Test:} with $g=0$, Adam step should be zero but AdamW should decay parameters by $heta \leftarrow (1-\eta\lambda)heta$.
+\textbf{Test:} with $g=0$, Adam step should be zero but AdamW should decay parameters by $\theta \leftarrow (1-\eta\lambda)\theta$.
 
 \subsection*{tests/test_adam_adamw.c}
 \begin{verbatim}
@@ -334,13 +334,13 @@ const adam_t wd = (adam_t)0.5;
 ASSERT_TRUE(adam_init(&opt, 1, lr, (adam_t)0.9, (adam_t)0.999,
 (adam_t)1e-8, wd, m, v) == 0);
 
-adam_t theta[1] = {(adam_t)2.0};
+adam_t t\theta[1] = {(adam_t)2.0};
 const adam_t grad[1] = {(adam_t)0.0};
 
-adam_step(&opt, theta, grad);
+adam_step(&opt, t\theta, grad);
 
 const adam_t expected = (adam_t)2.0 * ((adam_t)1.0 - lr * wd);
-ASSERT_NEAR(theta[0], expected, 1e-12);
+ASSERT_NEAR(t\theta[0], expected, 1e-12);
 return 0;
 }
 \end{verbatim}
@@ -348,9 +348,9 @@ return 0;
 \subsection{Exercise 5: End-to-End on a Quadratic Bowl}
 Minimize
 \[
-f(heta) = frac12|heta|_2^2 \quad\Rightarrow\quad \nabla f(heta)=heta.
+f(\theta) = \frac12|\theta|_2^2 \quad\Rightarrow\quad \nabla f(\theta)=\theta.
 \]
-extbf{Test:} initialize $heta_0$ and run many Adam steps with $g_t=heta_t$; verify $|heta|$ decreases below a threshold.
+\textbf{Test:} initialize $\theta_0$ and run many Adam steps with $g_t=\theta_t$; verify $|\theta|$ decreases below a threshold.
 
 \subsection*{tests/test_adam_quadratic.c}
 \begin{verbatim}
@@ -370,15 +370,15 @@ adam_opt_t opt;
 ASSERT_TRUE(adam_init(&opt, d, (adam_t)1e-1, (adam_t)0.9, (adam_t)0.999,
 (adam_t)1e-8, (adam_t)0.0, m, v) == 0);
 
-adam_t theta[d] = {(adam_t)5.0,(adam_t)-3.0,(adam_t)2.0,(adam_t)-1.0};
+adam_t t\theta[d] = {(adam_t)5.0,(adam_t)-3.0,(adam_t)2.0,(adam_t)-1.0};
 adam_t g[d];
 
-const adam_t n0 = norm2(theta, d);
+const adam_t n0 = norm2(t\theta, d);
 for (int k = 0; k < 2000; ++k) {
-for (int i = 0; i < d; ++i) g[i] = theta[i];
-adam_step(&opt, theta, g);
+for (int i = 0; i < d; ++i) g[i] = t\theta[i];
+adam_step(&opt, t\theta, g);
 }
-const adam_t n1 = norm2(theta, d);
+const adam_t n1 = norm2(t\theta, d);
 ASSERT_TRUE(n1 < (adam_t)1e-2 * n0);
 return 0;
 }
@@ -418,15 +418,15 @@ When a test fails, the most likely issues are:
 \item bias-correction computed using the \emph{old} power rather than updated power;
 \item epsilon placed inside the square root;
 \item integer truncation when computing norms or tolerances;
-\item accidental aliasing between exttt{theta} and exttt{grad} buffers.
+\item accidental aliasing between exttt{t\theta} and exttt{grad} buffers.
 \end{itemize}
 
 \section{HPC Extensions (After Tests are Green)}
 \begin{enumerate}
-\item extbf{Incremental vectorization:} replace the inner loop with SIMD intrinsics.
-\item extbf{OpenMP:} parallelize the parameter dimension for large $d$.
-\item extbf{Mixed precision:} keep moments in float, accumulate in double.
-\item extbf{Fused kernels:} combine weight decay, moments, and update in one pass.
+\item \textbf{Incremental vectorization:} replace the inner loop with SIMD intrinsics.
+\item \textbf{OpenMP:} parallelize the parameter dimension for large $d$.
+\item \textbf{Mixed precision:} keep moments in float, accumulate in double.
+\item \textbf{Fused kernels:} combine weight decay, moments, and update in one pass.
 \end{enumerate}
 
 \section{Checkpoint}

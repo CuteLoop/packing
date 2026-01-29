@@ -1,209 +1,287 @@
+\chapter{C Implementation of Feasibility and Joint Optimization Solvers}
 
-
-\chapter{Discrete Formulations of Packing via Independent Sets}
-\label{chap:discrete-packing-mis}
-
-\section{From Continuous Packing to Discrete Candidates}
-
-We begin with a classical continuous packing problem: given a compact container
-$\Omega \subset \mathbb{R}^2$ (e.g.\ a square or disk) and identical circles of radius $r$,
-place as many circles as possible inside $\Omega$ without overlap.
-
-In the continuous setting, the configuration space is infinite-dimensional,
-and the problem is highly nonconvex. To make algorithmic progress, we introduce
-a \emph{discretization of configuration space}.
-
-\subsection{Candidate placements}
-
-Let $\mathcal{P} = \{p_1, \dots, p_M\} \subset \Omega$ be a finite set of candidate
-circle centers. These may arise from:
-\begin{itemize}
-\item a uniform Cartesian grid,
-\item a union of rotated grids to reduce anisotropy,
-\item or a local patch extracted from a continuous solver.
-\end{itemize}
-
-Each candidate $p_i$ represents the placement of a circle centered at $p_i$.
-
-A candidate is \emph{feasible} if the entire disk lies inside the container:
-\[
-\operatorname{dist}(p_i, \partial \Omega) \ge r.
-\]
-
-Only feasible candidates are retained.
-
-\subsection{Conflict detection}
-
-Two candidates $p_i$ and $p_j$ are said to be \emph{in conflict} if placing circles
-at both locations would cause overlap:
-\[
-\|p_i - p_j\| < 2r.
-\]
-
-This pairwise condition captures all geometric constraints of the packing problem
-once the candidate set has been fixed.
-
-\section{Graph Construction}
-
-The discrete packing problem can now be represented as a graph.
-
-\begin{definition}[Conflict Graph]
-Let $G = (V,E)$ be a graph where:
-\begin{itemize}
-\item Each vertex $i \in V$ corresponds to a candidate placement $p_i \in \mathcal{P}$.
-\item An edge $(i,j) \in E$ exists if and only if $p_i$ and $p_j$ are in conflict.
-\end{itemize}
-\end{definition}
-
-The graph $G$ encodes all pairwise incompatibilities between candidate placements.
-Importantly, this graph is:
-\begin{itemize}
-\item geometric,
-\item sparse (conflicts are local),
-\item independent of the optimization method used later.
-\end{itemize}
-
-\section{Packing as an Independent Set Problem}
-
-A valid packing corresponds to a selection of candidates such that no two
-selected placements conflict.
-
-\begin{definition}[Independent Set]
-A subset $S \subset V$ is an \emph{independent set} if no two vertices in $S$
-share an edge.
-\end{definition}
-
-\subsection{Maximum vs.\ maximal independent sets}
-
-Two notions are relevant:
-\begin{itemize}
-\item A \emph{maximal} independent set cannot be extended by adding another vertex.
-\item A \emph{maximum} independent set has the largest possible cardinality.
-\end{itemize}
-
-In packing problems, we are interested in the \emph{maximum independent set} (MIS),
-since its cardinality corresponds to the maximum number of circles that can be placed
-using the candidate set.
-
-\begin{problem}[Discrete Packing via MIS]
-Given a conflict graph $G = (V,E)$, find
-\[
-\max_{S \subset V} |S| \quad ext{such that } S ext{ is an independent set.}
-\]
-\end{problem}
-
-This formulation is exact for the discretized problem and separates geometry
-(from graph construction) from combinatorial optimization.
-
-\section{Integer Linear Programming Formulation}
-
-The maximum independent set problem admits a standard integer programming formulation.
-
-\subsection{Binary decision variables}
-
-Introduce variables
-\[
-x_i \in \{0,1\}, \quad i \in V,
-\]
-where $x_i = 1$ indicates that candidate $p_i$ is selected.
-
-\subsection{MILP formulation}
-
-The packing problem becomes:
-\begin{align}
-\max \quad & \sum_{i \in V} x_i \\
-ext{subject to} \quad
-& x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
-& x_i \in \{0,1\}, \quad \forall i \in V.
-\end{align}
-
-Each constraint $x_i + x_j \le 1$ enforces non-overlap for a conflicting pair.
-This formulation is exact and captures all geometric constraints implicitly
-through the graph.
-
-\section{LP Relaxation and Its Interpretation}
-
-Solving the MILP directly is computationally expensive.
-A standard relaxation replaces integrality by bounds:
-\[
-x_i \in [0,1].
-\]
-
-\subsection{LP relaxation}
-
-The relaxed problem is:
-\begin{align}
-\max \quad & \sum_{i \in V} x_i \\
-ext{subject to} \quad
-& x_i + x_j \le 1, \quad \forall (i,j) \in E, \\
-& 0 \le x_i \le 1.
-\end{align}
-
-This linear program provides:
-\begin{itemize}
-\item an upper bound on the true packing number,
-\item fractional solutions that encode local packing density.
-\end{itemize}
-
-In geometric settings, fractional values often highlight regions of high
-structural order even before integrality is enforced.
-
-\section{Algorithmic Solution via Constraint Generation}
-
-The full conflict graph may contain a large number of edges.
-However, most constraints are never active in optimal solutions.
-
-\subsection{Lazy constraint generation}
-
-An efficient strategy is to generate constraints iteratively:
-
+The previous chapter developed two solver strategies for optimizing the square
+side length:
 \begin{enumerate}
-\item Start with variables $x_i \in [0,1]$ and a minimal constraint set.
-\item Solve the LP.
-\item Detect violated conflict constraints:
-\[
-x_i + x_j > 1 \quad ext{for some conflicting pair } (i,j).
-\]
-\item Add the violated constraints.
-\item Repeat until no violations remain.
+\item feasibility search via an outer loop on $L$,
+\item joint optimization of $(X,L)$ using simulated annealing.
 \end{enumerate}
 
-Because conflicts are local, the number of active constraints remains manageable.
+This chapter translates those ideas into a \emph{minimal, test-driven C
+implementation} that extends the existing simulated annealing baseline.
 
-\subsection{Transition to integer solutions}
+As before, the emphasis is not performance, but:
+\begin{itemize}
+\item correctness,
+\item explicit invariants,
+\item deterministic behavior under fixed seeds,
+\item and instrumentation suitable for scientific reasoning.
+\end{itemize}
 
-Once the LP relaxation stabilizes, integrality constraints are reinstated:
+All additions are layered \emph{on top of} the existing SA core, rather than
+rewriting it.
+
+%--------------------------------------------------------------------
+\section{Design Principles for the Extension}
+
+Before writing code, we make several design commitments.
+
+\begin{enumerate}
+\item \textbf{No changes to the inner SA logic unless required.}  
+      The fixed-$L$ simulated annealing kernel remains valid and reusable.
+\item \textbf{Feasibility is a predicate, not a heuristic.}  
+      It is expressed as a function of $(X,L)$ and tested independently.
+\item \textbf{Bounds come from geometry, not tuning.}  
+      Lower and upper bounds for $L$ are computed deterministically.
+\item \textbf{Solvers compose existing components.}  
+      New solvers call the existing SA driver instead of duplicating logic.
+\end{enumerate}
+
+These principles keep the codebase modular and auditable.
+
+%--------------------------------------------------------------------
+\section{New Supporting Primitives}
+
+\subsection{Feasibility Predicate}
+
+The most basic new operation is a feasibility test.
+
+\paragraph{Definition.}
+A configuration $(X,L)$ is feasible if:
 \[
-x_i \in \{0,1\}.
+E_{\text{pair}}(X) = 0
+\quad\text{and}\quad
+E_{\text{wall}}(X,L) = 0,
+\]
+up to a small numerical tolerance $\varepsilon$.
+
+\paragraph{C interface.}
+\begin{verbatim}
+int is_feasible(const Vec2* X, size_t N,
+                double r, double L, double eps);
+\end{verbatim}
+
+\paragraph{Design notes.}
+\begin{itemize}
+\item This function is pure and deterministic.
+\item It relies only on energy components already implemented.
+\item It is used by:
+  \begin{itemize}
+  \item the feasibility solver,
+  \item tests for geometric sanity,
+  \item post-run validation.
+  \end{itemize}
+\end{itemize}
+
+\paragraph{Tests.}
+\begin{itemize}
+\item Known non-overlapping interior configurations return feasible.
+\item Any overlap or wall violation returns infeasible.
+\item Degenerate cases ($N=1$, $L<2r$) behave correctly.
+\end{itemize}
+
+%--------------------------------------------------------------------
+\subsection{Lower and Upper Bounds on \texorpdfstring{$L$}{L}}
+
+To initialize feasibility search, we compute a deterministic bracket.
+
+\subsubsection{Lower bounds}
+
+Two guaranteed lower bounds are implemented:
+
+\begin{itemize}
+\item Diameter bound:
+  \[
+  L \ge 2r.
+  \]
+\item Area bound:
+  \[
+  L \ge r\sqrt{N\pi}.
+  \]
+\end{itemize}
+
+In code:
+\begin{verbatim}
+double lower_bound_area(size_t N, double r);
+double lower_bound_basic(size_t N, double r);
+\end{verbatim}
+
+The solver uses:
+\[
+L_{\text{lo}} = \max(2r,\; r\sqrt{N\pi}).
 \]
 
-The resulting problem is solved using a \emph{branch-and-cut} strategy:
+\subsubsection{Upper bound via grid construction}
+
+A constructive packing places circles on a square grid with spacing $2r$.
+
+\paragraph{C interface.}
+\begin{verbatim}
+double upper_bound_grid(size_t N, double r);
+void init_grid(Vec2* X, size_t N, double r, double L);
+\end{verbatim}
+
+This guarantees:
+\[
+L_{\text{hi}} = 2r\lceil\sqrt{N}\rceil
+\]
+and provides an explicit feasible witness.
+
+\paragraph{Tests.}
 \begin{itemize}
-\item LP relaxation provides bounds,
-\item branching enforces integrality,
-\item constraint generation continues as needed.
+\item Grid initialization yields zero pair and wall energy.
+\item Returned $L_{\text{hi}} \ge L_{\text{lo}}$ for all $N$.
 \end{itemize}
 
-This approach yields exact solutions for local patch problems and provides
-certificates of optimality.
+%--------------------------------------------------------------------
+\section{Feasibility Solver in C}
 
-\section{Interpretation and Scope}
+\subsection{High-Level Structure}
 
-This discrete formulation has several important properties:
+The feasibility solver performs an outer bisection on $L$, using the
+existing fixed-$L$ SA kernel as a feasibility oracle.
+
+\paragraph{Interface.}
+\begin{verbatim}
+FeasibleSolveResult solve_feasible_bisect(
+    size_t N, double r,
+    double L_lo, double L_hi,
+    double eps_feas,
+    double T0, double gamma,
+    size_t n_steps, double sigma,
+    unsigned long seed,
+    int retries_per_L
+);
+\end{verbatim}
+
+\paragraph{Algorithm.}
+\begin{enumerate}
+\item Initialize $(L_{\text{lo}},L_{\text{hi}})$ from geometric bounds.
+\item While $L_{\text{hi}}-L_{\text{lo}}$ exceeds tolerance:
+  \begin{enumerate}
+  \item Set $L_{\text{mid}} = \tfrac12(L_{\text{lo}}+L_{\text{hi}})$.
+  \item Run SA at fixed $L_{\text{mid}}$.
+  \item If a feasible configuration is found:
+        \begin{itemize}
+        \item record the witness,
+        \item set $L_{\text{hi}} \leftarrow L_{\text{mid}}$.
+        \end{itemize}
+  \item Otherwise set $L_{\text{lo}} \leftarrow L_{\text{mid}}$.
+  \end{enumerate}
+\end{enumerate}
+
+\paragraph{Handling stochasticity.}
+Because SA is probabilistic, feasibility tests may fail spuriously.
+The solver supports multiple retries per $L$, using deterministic
+seed offsets to preserve reproducibility.
+
+\paragraph{Diagnostics.}
+Each bisection iteration may log:
 \begin{itemize}
-\item It cleanly separates geometry from optimization.
-\item It applies equally to circles, polygons, and more general shapes.
-\item It is well suited for \emph{local patch analysis}, where structure
-such as hexagonal order can emerge without being prescribed.
+\item tested $L$,
+\item feasibility result,
+\item best energy achieved,
+\item best $E_{\text{pair}}$ and $E_{\text{wall}}$.
 \end{itemize}
 
-However, the method does not scale to large global packings and is best
-used as a:
+%--------------------------------------------------------------------
+\section{Joint Optimization Solver in C}
+
+\subsection{Extended State Space}
+
+Joint optimization treats $(X,L)$ as a single state.
+
+\paragraph{State variables.}
 \begin{itemize}
-\item verification tool,
-\item local structure discovery method,
-\item or subproblem within a hybrid continuous--discrete pipeline.
+\item $X \in \mathbb{R}^{N\times 2}$,
+\item $L \ge 2r$.
 \end{itemize}
 
-In later chapters, we will combine this discrete machinery with continuous
-relaxation and periodic boundary conditions to study bulk packing structure.
+\paragraph{Energy.}
+\[
+E(X,L) = E_{\text{pair}}(X) + E_{\text{wall}}(X,L) + \alpha L.
+\]
+
+\subsection{Proposal Kernel}
+
+At each step:
+\begin{itemize}
+\item with probability $p$, propose a circle move (as in the baseline),
+\item with probability $1-p$, propose:
+  \[
+  L' = \max(2r,\; L + \delta_L),
+  \qquad
+  \delta_L \sim \mathcal{N}(0,\sigma_L^2).
+  \]
+\end{itemize}
+
+Only the wall energy and $\alpha L$ term change for an $L$-move.
+
+\subsection{C Interface}
+
+\begin{verbatim}
+JointAnnealResult anneal_joint_run(
+    const Vec2* X0, size_t N,
+    double L0, double r, double alpha,
+    double T0, double gamma,
+    size_t n_steps,
+    double sigma_x, double sigma_L,
+    double p_move_x,
+    unsigned long seed
+);
+\end{verbatim}
+
+\paragraph{Trace logging.}
+The joint solver records:
+\begin{itemize}
+\item $E(t)$,
+\item $L(t)$,
+\item temperature,
+\item acceptance decisions,
+\item move type (position vs.\ $L$).
+\end{itemize}
+
+This allows direct inspection of how $L$ evolves during annealing.
+
+%--------------------------------------------------------------------
+\section{Testing Strategy}
+
+The new solvers introduce both mathematical and algorithmic invariants.
+
+\subsection{Mathematical tests}
+\begin{itemize}
+\item Lower bounds are never violated.
+\item Grid upper bound is always feasible.
+\item $\Delta E$ for $L$-moves matches recomputed energy differences.
+\end{itemize}
+
+\subsection{Algorithmic tests}
+\begin{itemize}
+\item Bisection interval shrinks monotonically.
+\item Best-so-far feasible $L$ never increases.
+\item Joint solver respects $L \ge 2r$ at all times.
+\end{itemize}
+
+\subsection{Empirical sanity checks}
+\begin{itemize}
+\item Larger $\alpha$ produces smaller final $L$ on average.
+\item Acceptance rate decreases as temperature cools.
+\end{itemize}
+
+These are treated as regression tests with tolerant thresholds,
+not strict invariants.
+
+%--------------------------------------------------------------------
+\section{Checkpoint}
+
+At the end of this chapter, you should have:
+
+\begin{itemize}
+\item a principled feasibility solver built from geometry and SA,
+\item a joint $(X,L)$ annealer with explicit proposal semantics,
+\item deterministic, testable C code extending the original baseline,
+\item diagnostics that explain solver behavior rather than obscure it.
+\end{itemize}
+
+The next chapter turns to \emph{performance}: spatial acceleration,
+parallelism, and the cost of correctness.

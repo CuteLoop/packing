@@ -46,9 +46,68 @@ The key conceptual shift of simulated annealing is to replace deterministic desc
 \subsection{Energy Formulation}
 We introduce a scalar energy
 \[
-E(x,L) = E_{ext{overlap}}(x) + \alpha L,
+E(x,L) = E_{\text{overlap}}(x) + \alpha L,
 \]
-where $E_{ext{overlap}}$ penalizes violations of geometric constraints and $\alpha>0$ balances feasibility against compactness.
+where $E_{\text{overlap}}$ penalizes violations of geometric constraints and $\alpha>0$ balances feasibility against compactness.
+
+\subsection{Key Question}
+Why should we ever accept a move that increases $E$?
+
+The answer is central: rejecting all uphill moves traps the algorithm in local minima. Allowing energy--increasing moves enables escape from metastable states.
+
+\section{Statistical Mechanics Perspective}
+
+\chapter{Simulated Annealing for Circle Packing in a Square}
+
+\section*{Guiding Question}
+How can a stochastic, temperature--driven algorithm reliably solve deterministic, highly non--convex geometric optimization problems where gradient--based methods fail?
+
+This chapter establishes the \emph{theoretical and conceptual foundation} for simulated annealing (SA) through an inquiry--based lens. We use the geometric problem of packing $N$ identical circles into a square of minimal side length as a concrete running example. The goal is not to implement SA yet, but to understand \emph{why it works}, \emph{what assumptions it relies on}, and \emph{which design choices matter} before turning to test--driven C implementations in later chapters.
+
+\section{The Optimization Problem}
+
+We consider the problem of packing $N$ circles of radius $r$ into a square of side length $L$, minimizing $L$ subject to non--overlap and boundary constraints.
+
+\subsection{Configuration Space}
+A configuration is described by
+\[
+x = (x_1,y_1,\dots,x_N,y_N) \in \mathbb{R}^{2N},
+\]
+with constraints
+\[
+\lvert(x_i,y_i)-(x_j,y_j)\rvert \ge 2r, \quad i\neq j, \qquad r \le x_i,y_i \le L-r.
+\]
+
+The feasible set is a subset of $\mathbb{R}^{2N}$ defined by pairwise distance constraints and box constraints.
+
+\section{Why Classical Optimization Fails}
+
+\subsection{Inquiry}
+\begin{itemize}
+\item Is the feasible set convex?
+\item Is the objective function differentiable everywhere?
+\item How does the number of local minima scale with $N$?
+\end{itemize}
+
+Each question reveals a structural obstruction:
+\begin{itemize}
+\item The feasible set is \emph{highly non--convex}.
+\item Contact events between circles introduce \emph{nonsmoothness}.
+\item The number of metastable configurations grows combinatorially with $N$.
+\end{itemize}
+
+These are not numerical pathologies but geometric ones. Gradient--based methods fail \emph{by design}, not merely by poor tuning.
+
+\section{From Optimization to Sampling}
+
+The key conceptual shift of simulated annealing is to replace deterministic descent with \emph{probabilistic exploration}.
+
+\subsection{Energy Formulation}
+We introduce a scalar energy
+\[
+E(x,L) = E_{\text{overlap}}(x) + \alpha L,
+\]
+where $E_{\text{overlap}}$ penalizes violations of geometric constraints and $\alpha>0$ balances feasibility against compactness.
 
 \subsection{Key Question}
 Why should we ever accept a move that increases $E$?
@@ -91,7 +150,7 @@ These questions will later justify the correctness of the algorithm independent 
 
 Simulated annealing proceeds by lowering the temperature:
 \[
-T_0 > T_1 > \cdots > T_k o 0.
+T_0 > T_1 > \cdots > T_k \to 0.
 \]
 
 \subsection{Theoretical Guarantee}
@@ -101,11 +160,11 @@ With logarithmic cooling, $T_k \sim c/\log k$, simulated annealing converges alm
 
 Every simulated annealing algorithm consists of:
 \begin{enumerate}
-\item extbf{State space}: configurations $x$ (and possibly $L$).
-\item extbf{Energy}: objective plus penalties.
-\item extbf{Proposal kernel}: how candidate states are generated.
-\item extbf{Acceptance rule}: Metropolis criterion.
-\item extbf{Cooling schedule}: temperature decay.
+\item \textbf{State space}: configurations $x$ (and possibly $L$).
+\item \textbf{Energy}: objective plus penalties.
+\item \textbf{Proposal kernel}: how candidate states are generated.
+\item \textbf{Acceptance rule}: Metropolis criterion.
+\item \textbf{Cooling schedule}: temperature decay.
 \end{enumerate}
 
 Failure of any component compromises the method.
@@ -126,7 +185,7 @@ For distance $d$ between circle centers,
 
 Total overlap energy:
 \[
-E_{ext{overlap}}(x) = \sum_{i<j} \phi(|x_i-x_j|) + \sum_i \phi_{ext{wall}}(x_i).
+E_{\text{overlap}}(x) = \sum_{i<j} \phi(|x_i-x_j|) + \sum_i \phi_{\text{wall}}(x_i).
 \]
 
 \subsection{Inquiry}
@@ -146,7 +205,7 @@ Common proposal strategies include:
 
 A key heuristic is
 \[
-	ext{proposal scale} \propto \sqrt{T}.
+	\textbf{proposal scale} \propto \sqrt{T}.
 \]
 
 \section{Optimizing the Square Size}
@@ -159,7 +218,7 @@ Fix $L$, test feasibility via SA, and perform an outer binary search on $L$.
 \subsection{Joint Optimization}
 Optimize $(x,L)$ jointly using
 \[
-E(x,L) = E_{ext{overlap}}(x) + \alpha L.
+E(x,L) = E_{\text{overlap}}(x) + \alpha L.
 \]
 
 \subsection{Inquiry}
@@ -172,7 +231,7 @@ E(x,L) = E_{ext{overlap}}(x) + \alpha L.
 
 \begin{center}
 \begin{tabular}{ll}
-	extbf{Symptom} & extbf{Cause} \\
+	\textbf{Symptom} & \textbf{Cause} \\
 \hline
 Freezing & Cooling too fast \\
 Jittering & Proposal scale too large \\
