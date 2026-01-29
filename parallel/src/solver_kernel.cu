@@ -220,8 +220,11 @@ __global__ void k_overwrite_chain(DeviceSoA data, int src_chain, int dst_chain, 
     int dst_ptr = SOA_IDX(poly_idx, dst_chain, n_chains);
 
     if (poly_idx == 0) {
-        printf("[GPU DEBUG] Copying Poly 0: SrcChain %d (Addr %d) -> DstChain %d (Addr %d)\n",
-               src_chain, src_ptr, dst_chain, dst_ptr);
+        float src_x = data.pos_x[src_ptr];
+        float dst_x = data.pos_x[dst_ptr];
+        printf("[GPU DEBUG] Cloning Poly 0:\n");
+        printf("   Source (Chain %d, Addr %d): X = %.4f\n", src_chain, src_ptr, src_x);
+        printf("   Dest   (Chain %d, Addr %d): X = %.4f\n", dst_chain, dst_ptr, dst_x);
     }
 
     data.pos_x[dst_ptr] = data.pos_x[src_ptr];

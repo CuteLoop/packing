@@ -238,18 +238,31 @@ int main(int argc, char** argv) {
 
         gpu_download_stats(&soa, host_energies, h_accept, N_CHAINS);
         if (e == 0) {
-            gpu_download_energies(&soa, debug_energies, N_CHAINS);
-            printf("BEFORE CLONE: Chain 0: %.6f, Chain 1: %.6f\n", debug_energies[0], debug_energies[1]);
-            printf(">>> Overwriting Chain 1 with Chain 0...\n");
+            printf("\n=== RUNNING GEOMETRY CLONE TEST ===\n");
+            float* dbg_x = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
+            float* dbg_y = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
+            float* dbg_a = (float*)malloc((size_t)N_CHAINS * N_POLYS * sizeof(float));
+            float* dbg_e = (float*)malloc((size_t)N_CHAINS * sizeof(float));
+
+            gpu_download_state(&soa, dbg_x, dbg_y, dbg_a, dbg_e, N_CHAINS, N_POLYS);
+            int idx0 = 0 * N_POLYS + 0;
+            int idx1 = 1 * N_POLYS + 0;
+            printf("BEFORE CLONE: chain0 poly0 (%.6f, %.6f, %.6f) | chain1 poly0 (%.6f, %.6f, %.6f)\n",
+                   dbg_x[idx0], dbg_y[idx0], dbg_a[idx0], dbg_x[idx1], dbg_y[idx1], dbg_a[idx1]);
+
+            printf(">>> Invoking Clone Kernel (Watch for [GPU DEBUG] output)...\n");
             gpu_overwrite_chain(&soa, 0, 1, N_POLYS, N_CHAINS);
-            gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, 1);
-            gpu_download_energies(&soa, debug_energies, N_CHAINS);
-            printf("AFTER CLONE:  Chain 0: %.6f, Chain 1: %.6f\n", debug_energies[0], debug_energies[1]);
-            if (fabsf(debug_energies[0] - debug_energies[1]) < 1e-5f) {
-                printf("SUCCESS: Clone Verified.\n");
-            } else {
-                printf("FAILURE: Energies do not match.\n");
-            }
+            cudaDeviceSynchronize();
+
+            gpu_download_state(&soa, dbg_x, dbg_y, dbg_a, dbg_e, N_CHAINS, N_POLYS);
+            printf("AFTER CLONE:  chain0 poly0 (%.6f, %.6f, %.6f) | chain1 poly0 (%.6f, %.6f, %.6f)\n",
+                   dbg_x[idx0], dbg_y[idx0], dbg_a[idx0], dbg_x[idx1], dbg_y[idx1], dbg_a[idx1]);
+
+            free(dbg_x);
+            free(dbg_y);
+            free(dbg_a);
+            free(dbg_e);
+            printf("=== TEST COMPLETE ===\n");
         }
 
         int best_idx = -1;
