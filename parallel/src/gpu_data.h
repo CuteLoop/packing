@@ -60,6 +60,8 @@ void gpu_sync_rng(DeviceSoA* dev_soa, void* host_rng, int n_chains, bool to_gpu)
 void gpu_sync_accept(DeviceSoA* dev_soa, int* host_accept, int n_chains, bool to_gpu);
 void gpu_download_stats(DeviceSoA* dev_soa, float* host_energy, int* host_accept, int n_chains);
 void gpu_download_energies(DeviceSoA* dev_soa, float* host_dst, int n_chains);
+void gpu_download_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
+                                 float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains);
 
 #ifdef __cplusplus
 }

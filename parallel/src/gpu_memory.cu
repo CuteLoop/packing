@@ -163,3 +163,31 @@ extern "C" void gpu_download_energies(DeviceSoA* dev_soa, float* host_dst, int n
 {
     CUDA_CHECK(cudaMemcpy(host_dst, dev_soa->chain_energies, n_chains * sizeof(float), cudaMemcpyDeviceToHost));
 }
+
+extern "C" void gpu_download_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
+                                            float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains)
+{
+    size_t total_floats = (size_t)n_chains * n_polys;
+    float* temp_buf = (float*)malloc(total_floats * sizeof(float));
+    if (!temp_buf) {
+        printf("Host alloc failed\n");
+        exit(1);
+    }
+
+    CUDA_CHECK(cudaMemcpy(temp_buf, dev_soa->pos_x, total_floats * sizeof(float), cudaMemcpyDeviceToHost));
+    for (int p = 0; p < n_polys; p++) {
+        h_x[p] = temp_buf[SOA_IDX(p, chain_idx, n_chains)];
+    }
+
+    CUDA_CHECK(cudaMemcpy(temp_buf, dev_soa->pos_y, total_floats * sizeof(float), cudaMemcpyDeviceToHost));
+    for (int p = 0; p < n_polys; p++) {
+        h_y[p] = temp_buf[SOA_IDX(p, chain_idx, n_chains)];
+    }
+
+    CUDA_CHECK(cudaMemcpy(temp_buf, dev_soa->angle, total_floats * sizeof(float), cudaMemcpyDeviceToHost));
+    for (int p = 0; p < n_polys; p++) {
+        h_ang[p] = temp_buf[SOA_IDX(p, chain_idx, n_chains)];
+    }
+
+    free(temp_buf);
+}

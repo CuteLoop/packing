@@ -49,6 +49,7 @@ void gpu_upload_geometry_from_baked(const BakedGeometry* baked);
 void gpu_free_geometry(void);
 
 void gpu_download_energies(DeviceSoA* data, float* host_dst, int n_chains);
+void gpu_download_chain_geometry(DeviceSoA* data, int chain_idx, float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains);
 
 #ifdef __cplusplus
 }
