@@ -31,6 +31,7 @@ extern "C" {
 
 void gpu_alloc_soa(DeviceSoA* soa, int n_chains, int n_polys);
 void gpu_free_soa(DeviceSoA* soa);
+void gpu_audit_memory(DeviceSoA* soa, int n_chains, int n_polys);
 
 void gpu_upload_state(DeviceSoA* dev_soa,
                       const float* host_x,

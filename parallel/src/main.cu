@@ -179,6 +179,7 @@ static void run_single_simulation(int n_chains, int n_polys, int n_epochs, doubl
 
     DeviceSoA soa;
     gpu_alloc_soa(&soa, n_chains, n_polys);
+    gpu_audit_memory(&soa, n_chains, n_polys);
     gpu_init_rng(&soa, n_chains, (unsigned long long)time(NULL));
 
     float* h_x = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
@@ -409,6 +410,7 @@ int main(int argc, char** argv) {
 
     DeviceSoA soa;
     gpu_alloc_soa(&soa, n_chains, n_polys);
+    gpu_audit_memory(&soa, n_chains, n_polys);
     gpu_init_rng(&soa, n_chains, 12345ULL);
 
     float current_box = 100.0f;

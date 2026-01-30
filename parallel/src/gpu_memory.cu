@@ -44,6 +44,40 @@ void gpu_free_soa(DeviceSoA* soa) {
     cudaFree(soa->rng);
 }
 
+void gpu_audit_memory(DeviceSoA* soa, int n_chains, int n_polys) {
+    printf("\n>> GPU MEMORY AUDIT (%d chains, %d polys)\n", n_chains, n_polys);
+    if (!soa->pos_x || !soa->pos_y || !soa->angle) {
+        printf("!! FAIL: Position/angle buffers are NULL\n");
+        exit(1);
+    }
+    if (!soa->energy || !soa->chain_energies || !soa->temperature || !soa->accept_count) {
+        printf("!! FAIL: Metadata buffers are NULL\n");
+        exit(1);
+    }
+    if (!soa->rng) {
+        printf("!! FAIL: RNG buffer is NULL\n");
+        exit(1);
+    }
+
+    size_t free_mem = 0, total_mem = 0;
+    cudaError_t mem_err = cudaMemGetInfo(&free_mem, &total_mem);
+    if (mem_err != cudaSuccess) {
+        printf("!! AUDIT FAILED: cudaMemGetInfo: %s\n", cudaGetErrorString(mem_err));
+        exit(1);
+    }
+
+    double free_gb = (double)free_mem / (1024.0 * 1024.0 * 1024.0);
+    double total_gb = (double)total_mem / (1024.0 * 1024.0 * 1024.0);
+    printf("   [VRAM Health] Free: %.2f GB / Total: %.2f GB\n", free_gb, total_gb);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("!! AUDIT FAILED: Residual CUDA Error: %s\n", cudaGetErrorString(err));
+        exit(1);
+    }
+    printf(">> AUDIT PASSED. Heap looks healthy.\n\n");
+}
+
 void gpu_upload_state(DeviceSoA* dev_soa,
                       const float* h_x, const float* h_y, const float* h_ang,
                       int n_chains, int n_polys) {
