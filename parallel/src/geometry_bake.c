@@ -1,6 +1,7 @@
 #include "geometry_bake.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 int baked_geometry_build(const ConvexDecomp *D, BakedGeometry *out)
 {
