@@ -225,6 +225,15 @@ __global__ void k_overwrite_chain(DeviceSoA data, int src_chain, int dst_chain, 
     data.angle[dst_ptr] = data.angle[src_ptr];
 }
 
+__global__ void k_rescale_world(DeviceSoA data, int n_chains, int n_polys, float scale_factor) {
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    int total = n_chains * n_polys;
+    if (idx >= total) return;
+
+    data.pos_x[idx] *= scale_factor;
+    data.pos_y[idx] *= scale_factor;
+}
+
 extern "C" void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chain, int n_polys, int n_chains) {
     int threads = 128;
     int blocks = (n_polys + threads - 1) / threads;
@@ -239,4 +248,17 @@ extern "C" void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chai
     if (err != cudaSuccess) {
         printf("!!! CLONE KERNEL FAILED: %s !!!\n", cudaGetErrorString(err));
     }
+}
+
+extern "C" void gpu_rescale_world(DeviceSoA* data, int n_chains, int n_polys, float scale_factor) {
+    int threads = 256;
+    int total = n_chains * n_polys;
+    int blocks = (total + threads - 1) / threads;
+    k_rescale_world<<<blocks, threads>>>(*data, n_chains, n_polys, scale_factor);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("Rescale Kernel Failed: %s\n", cudaGetErrorString(err));
+    }
+    cudaDeviceSynchronize();
 }

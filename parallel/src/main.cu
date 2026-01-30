@@ -260,26 +260,18 @@ static void run_single_simulation(int n_chains, int n_polys, int n_epochs, doubl
             }
         }
 
-        if (epoch > 500 && epoch % 100 == 0) {
-            int elite_idx = rand() % HOF_SIZE;
-            if (hof_energies[elite_idx] < 1e8f) {
-                int target = rand() % n_chains;
-                gpu_upload_chain_geometry(&soa, target,
-                                          &hof_x[(size_t)elite_idx * n_polys],
-                                          &hof_y[(size_t)elite_idx * n_polys],
-                                          &hof_a[(size_t)elite_idx * n_polys],
-                                          n_polys, n_chains);
-                h_t[target] = 0.1f;
-                gpu_sync_metadata(&soa, h_t, NULL, n_chains);
-            }
-        }
+        // HOF injection disabled for sweep stability/performance.
 
         if (epoch % 100 == 0) {
             float hof_best = hof_energies[0];
             for (int k = 1; k < HOF_SIZE; k++) if (hof_energies[k] < hof_best) hof_best = hof_energies[k];
             if (hof_best < 0.1f) {
                 float next_L = current_box * 0.99f;
-                if (next_L > min_L) current_box = next_L;
+                if (next_L > min_L) {
+                    float scale_factor = next_L / current_box;
+                    current_box = next_L;
+                    gpu_rescale_world(&soa, n_chains, n_polys, scale_factor);
+                }
             }
         }
     }
@@ -559,20 +551,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (e > 500 && (e % 100 == 0)) {
-            int elite_idx = rand() % HOF_SIZE;
-            if (hof_energies[elite_idx] < 1e8f) {
-                int target = rand() % n_chains;
-                gpu_upload_chain_geometry(&soa, target,
-                                          &hof_x[(size_t)elite_idx * n_polys],
-                                          &hof_y[(size_t)elite_idx * n_polys],
-                                          &hof_a[(size_t)elite_idx * n_polys],
-                                          n_polys, n_chains);
-                float hot_T = 0.1f;
-                h_t[target] = hot_T;
-                gpu_sync_metadata(&soa, h_t, NULL, n_chains);
-            }
-        }
+        // HOF injection disabled for stability/performance.
 
         if (e % 100 == 0 && best_E < 1e-4f) {
             float next_L = current_box * 0.99f;
@@ -580,7 +559,9 @@ int main(int argc, char** argv) {
                 next_L = min_L_theoretical;
             }
             if (next_L < current_box) {
+                float scale_factor = next_L / current_box;
                 current_box = next_L;
+                gpu_rescale_world(&soa, n_chains, n_polys, scale_factor);
                 printf("[Epoch %d] Shrinking L -> %.4f (min %.4f)\n", e, current_box, min_L_theoretical);
             }
         }

@@ -42,6 +42,7 @@ void gpu_launch_anneal(
 );
 
 void gpu_overwrite_chain(DeviceSoA* data, int src_chain, int dst_chain, int n_polys, int n_chains);
+void gpu_rescale_world(DeviceSoA* data, int n_chains, int n_polys, float scale_factor);
 
 // Wrapper for geometry upload
 void gpu_upload_geometry(GpuBakedGeometry* host_geo);
