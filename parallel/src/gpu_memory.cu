@@ -89,6 +89,19 @@ void gpu_audit_memory(DeviceSoA* soa, int n_chains, int n_polys) {
 void gpu_upload_state(DeviceSoA* dev_soa,
                       const float* h_x, const float* h_y, const float* h_ang,
                       int n_chains, int n_polys) {
+    if (n_chains > dev_soa->allocated_chains || n_polys > dev_soa->allocated_polys) {
+        printf("!! FATAL: gpu_upload_state exceeds allocation (alloc %d x %d)\n",
+               dev_soa->allocated_chains, dev_soa->allocated_polys);
+        exit(1);
+    }
+    if (!dev_soa->pos_x || !dev_soa->pos_y || !dev_soa->angle) {
+        printf("!! FATAL: gpu_upload_state device buffers NULL\n");
+        exit(1);
+    }
+    if (!h_x || !h_y || !h_ang) {
+        printf("!! FATAL: gpu_upload_state host buffers NULL\n");
+        exit(1);
+    }
     size_t total_floats = (size_t)n_chains * n_polys;
     float* temp_buf = (float*)malloc(total_floats * sizeof(float));
     if (!temp_buf) {
@@ -129,6 +142,19 @@ void gpu_upload_state(DeviceSoA* dev_soa,
 void gpu_download_state(DeviceSoA* dev_soa,
                         float* h_x, float* h_y, float* h_ang, float* h_e,
                         int n_chains, int n_polys) {
+    if (n_chains > dev_soa->allocated_chains || n_polys > dev_soa->allocated_polys) {
+        printf("!! FATAL: gpu_download_state exceeds allocation (alloc %d x %d)\n",
+               dev_soa->allocated_chains, dev_soa->allocated_polys);
+        exit(1);
+    }
+    if (!dev_soa->pos_x || !dev_soa->pos_y || !dev_soa->angle || !dev_soa->energy) {
+        printf("!! FATAL: gpu_download_state device buffers NULL\n");
+        exit(1);
+    }
+    if (!h_x || !h_y || !h_ang || !h_e) {
+        printf("!! FATAL: gpu_download_state host buffers NULL\n");
+        exit(1);
+    }
     size_t total_floats = (size_t)n_chains * n_polys;
     float* temp_buf = (float*)malloc(total_floats * sizeof(float));
     if (!temp_buf) {
@@ -209,6 +235,19 @@ extern "C" void gpu_sync_accept(DeviceSoA* dev_soa, int* host_accept, int n_chai
 
 extern "C" void gpu_download_stats(DeviceSoA* dev_soa, float* host_energy, int* host_accept, int n_chains)
 {
+    if (n_chains > dev_soa->allocated_chains) {
+        printf("!! FATAL: gpu_download_stats n_chains=%d exceeds allocation %d\n",
+               n_chains, dev_soa->allocated_chains);
+        exit(1);
+    }
+    if (!dev_soa->energy || !dev_soa->accept_count) {
+        printf("!! FATAL: gpu_download_stats device buffers NULL\n");
+        exit(1);
+    }
+    if (!host_energy) {
+        printf("!! FATAL: gpu_download_stats host_energy NULL\n");
+        exit(1);
+    }
     CUDA_CHECK(cudaMemcpy(host_energy, dev_soa->energy, n_chains * sizeof(float), cudaMemcpyDeviceToHost));
     if (host_accept) {
         CUDA_CHECK(cudaMemcpy(host_accept, dev_soa->accept_count, n_chains * sizeof(int), cudaMemcpyDeviceToHost));
