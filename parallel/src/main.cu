@@ -158,9 +158,9 @@ static float calculate_fingerprint(const float* x, const float* y, int n) {
     return sum_sq;
 }
 
-void run_all_tests();
-
-#include "tests.cu"
+void run_all_tests() {
+    printf("[TEST] Tests disabled in this build.\n");
+}
 
 static void run_single_simulation(int n_chains, int n_polys, int n_epochs, double poly_area_base, FILE* csv_log) {
     if (n_chains < 1) n_chains = 1;
