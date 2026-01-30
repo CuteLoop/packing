@@ -50,6 +50,10 @@ void gpu_free_geometry(void);
 
 void gpu_download_energies(DeviceSoA* data, float* host_dst, int n_chains);
 void gpu_download_chain_geometry(DeviceSoA* data, int chain_idx, float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains);
+void gpu_upload_chain_geometry(DeviceSoA* data, int chain_idx, const float* h_x, const float* h_y, const float* h_ang, int n_polys, int n_chains);
+
+void run_simulation(int n_chains, int n_polys, int n_epochs);
+void run_sweep_step(int n_polys, int n_epochs, void* csv_file_ptr);
 
 #ifdef __cplusplus
 }

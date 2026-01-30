@@ -48,7 +48,8 @@ EXCLUDE = src/accept.c \
 		  src/solver_parallel.c \
 		  src/solver_serial.c \
 		  src/test_invariants.c \
-		  src/test_soa_logic.c
+		  src/test_soa_logic.c \
+		  src/tests.cu
 
 SRCS_C  = $(filter-out $(EXCLUDE), $(ALL_C))
 SRCS_CU = $(ALL_CU)

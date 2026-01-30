@@ -191,3 +191,45 @@ extern "C" void gpu_download_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
 
     free(temp_buf);
 }
+
+__global__ void k_upload_chain_geometry(float* pos_x, float* pos_y, float* angle,
+                                        const float* src_x, const float* src_y, const float* src_a,
+                                        int chain_idx, int n_polys, int n_chains)
+{
+    int p = threadIdx.x + blockDim.x * blockIdx.x;
+    if (p >= n_polys) return;
+    int dst = SOA_IDX(p, chain_idx, n_chains);
+    pos_x[dst] = src_x[p];
+    pos_y[dst] = src_y[p];
+    angle[dst] = src_a[p];
+}
+
+extern "C" void gpu_upload_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
+                                           const float* h_x, const float* h_y, const float* h_ang, int n_polys, int n_chains)
+{
+    float* d_x = NULL;
+    float* d_y = NULL;
+    float* d_a = NULL;
+    size_t bytes = (size_t)n_polys * sizeof(float);
+
+    CUDA_CHECK(cudaMalloc((void**)&d_x, bytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_y, bytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_a, bytes));
+    CUDA_CHECK(cudaMemcpy(d_x, h_x, bytes, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_y, h_y, bytes, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_a, h_ang, bytes, cudaMemcpyHostToDevice));
+
+    int threads = 128;
+    int blocks = (n_polys + threads - 1) / threads;
+    k_upload_chain_geometry<<<blocks, threads>>>(dev_soa->pos_x, dev_soa->pos_y, dev_soa->angle,
+                                                 d_x, d_y, d_a, chain_idx, n_polys, n_chains);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("Upload kernel failed: %s\n", cudaGetErrorString(err));
+    }
+    cudaDeviceSynchronize();
+
+    cudaFree(d_x);
+    cudaFree(d_y);
+    cudaFree(d_a);
+}

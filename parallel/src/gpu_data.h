@@ -62,6 +62,8 @@ void gpu_download_stats(DeviceSoA* dev_soa, float* host_energy, int* host_accept
 void gpu_download_energies(DeviceSoA* dev_soa, float* host_dst, int n_chains);
 void gpu_download_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
                                  float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains);
+void gpu_upload_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
+                               const float* h_x, const float* h_y, const float* h_ang, int n_polys, int n_chains);
 
 #ifdef __cplusplus
 }

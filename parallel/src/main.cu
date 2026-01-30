@@ -141,9 +141,229 @@ static void perform_swaps(float* energies, float* temps) {
     }
 }
 
+static float calculate_fingerprint(const float* x, const float* y, int n) {
+    float cx = 0.0f, cy = 0.0f;
+    for (int i = 0; i < n; i++) {
+        cx += x[i];
+        cy += y[i];
+    }
+    cx /= (float)n;
+    cy /= (float)n;
+    float sum_sq = 0.0f;
+    for (int i = 0; i < n; i++) {
+        float dx = x[i] - cx;
+        float dy = y[i] - cy;
+        sum_sq += dx * dx + dy * dy;
+    }
+    return sum_sq;
+}
+
+void run_all_tests();
+
+#include "tests.cu"
+
+static void run_single_simulation(int n_chains, int n_polys, int n_epochs, double poly_area_base, FILE* csv_log) {
+    if (n_chains < 1) n_chains = 1;
+    if (n_chains > N_CHAINS) n_chains = N_CHAINS;
+    if (n_polys < 1) n_polys = 1;
+    if (n_polys > N_POLYS) n_polys = N_POLYS;
+
+    float total_area = (float)(poly_area_base * (double)n_polys);
+    float min_L_density = (total_area > 0.0f) ? sqrtf(total_area) : 0.0f;
+    float min_L_geom = 4.0f;
+    float min_L = min_L_density > min_L_geom ? min_L_density : min_L_geom;
+    min_L *= 1.01f;
+    float current_box = min_L * 1.5f;
+
+    printf(">> [Setup N=%3d] Min L: %.2f | Start L: %.2f\n", n_polys, min_L, current_box);
+
+    DeviceSoA soa;
+    gpu_alloc_soa(&soa, n_chains, n_polys);
+    gpu_init_rng(&soa, n_chains, (unsigned long long)time(NULL));
+
+    float* h_x = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float* h_y = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float* h_a = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float* h_t = (float*)malloc((size_t)n_chains * sizeof(float));
+    int* h_accept = (int*)calloc((size_t)n_chains, sizeof(int));
+
+    float T_min = 1e-5f;
+    float T_max = 0.1f;
+    for (int i = 0; i < n_chains; i++) {
+        float ratio = (n_chains > 1) ? (float)i / (float)(n_chains - 1) : 0.0f;
+        h_t[i] = T_min * powf(T_max / T_min, ratio);
+        for (int p = 0; p < n_polys; p++) {
+            h_x[i * n_polys + p] = ((float)rand() / RAND_MAX - 0.5f) * current_box;
+            h_y[i * n_polys + p] = ((float)rand() / RAND_MAX - 0.5f) * current_box;
+            h_a[i * n_polys + p] = ((float)rand() / RAND_MAX) * 6.28f;
+        }
+    }
+
+    gpu_upload_state(&soa, h_x, h_y, h_a, n_chains, n_polys);
+    gpu_sync_metadata(&soa, NULL, h_t, true);
+
+    float* host_energies = (float*)malloc((size_t)n_chains * sizeof(float));
+    int HOF_SIZE = 5;
+    float* hof_energies = (float*)malloc((size_t)HOF_SIZE * sizeof(float));
+    float* hof_fingerprints = (float*)malloc((size_t)HOF_SIZE * sizeof(float));
+    float* snap_x = (float*)malloc((size_t)n_polys * sizeof(float));
+    float* snap_y = (float*)malloc((size_t)n_polys * sizeof(float));
+    float* snap_a = (float*)malloc((size_t)n_polys * sizeof(float));
+    float* hof_x = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+    float* hof_y = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+    float* hof_a = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+
+    for (int k = 0; k < HOF_SIZE; k++) {
+        hof_energies[k] = 1e9f;
+        hof_fingerprints[k] = -1.0f;
+    }
+
+    int epoch_steps = 1000;
+    for (int epoch = 0; epoch < n_epochs; epoch++) {
+        gpu_launch_anneal(&soa, n_chains, n_polys, current_box, epoch_steps);
+        gpu_download_stats(&soa, host_energies, h_accept, n_chains);
+
+        int best_idx = -1;
+        float best_E = 1e9f;
+        for (int i = 0; i < n_chains; i++) {
+            if (host_energies[i] < best_E) {
+                best_E = host_energies[i];
+                best_idx = i;
+            }
+        }
+
+        if (epoch % 10 == 0) {
+            perform_swaps(host_energies, h_t);
+            gpu_sync_metadata(&soa, NULL, h_t, true);
+        }
+
+        if (epoch % 50 == 0 && best_idx >= 0) {
+            gpu_download_chain_geometry(&soa, best_idx, snap_x, snap_y, snap_a, n_polys, n_chains);
+            float fp = calculate_fingerprint(snap_x, snap_y, n_polys);
+            int worst_hof = 0;
+            for (int k = 1; k < HOF_SIZE; k++) {
+                if (hof_energies[k] > hof_energies[worst_hof]) worst_hof = k;
+            }
+            bool unique = true;
+            for (int k = 0; k < HOF_SIZE; k++) {
+                if (hof_energies[k] < 1e8f && fabsf(fp - hof_fingerprints[k]) < 0.5f) {
+                    unique = false;
+                    break;
+                }
+            }
+            if (unique && best_E < hof_energies[worst_hof]) {
+                hof_energies[worst_hof] = best_E;
+                hof_fingerprints[worst_hof] = fp;
+                memcpy(&hof_x[(size_t)worst_hof * n_polys], snap_x, (size_t)n_polys * sizeof(float));
+                memcpy(&hof_y[(size_t)worst_hof * n_polys], snap_y, (size_t)n_polys * sizeof(float));
+                memcpy(&hof_a[(size_t)worst_hof * n_polys], snap_a, (size_t)n_polys * sizeof(float));
+            }
+        }
+
+        if (epoch > 500 && epoch % 100 == 0) {
+            int elite_idx = rand() % HOF_SIZE;
+            if (hof_energies[elite_idx] < 1e8f) {
+                int target = rand() % n_chains;
+                gpu_upload_chain_geometry(&soa, target,
+                                          &hof_x[(size_t)elite_idx * n_polys],
+                                          &hof_y[(size_t)elite_idx * n_polys],
+                                          &hof_a[(size_t)elite_idx * n_polys],
+                                          n_polys, n_chains);
+                h_t[target] = 0.1f;
+                gpu_sync_metadata(&soa, NULL, h_t, true);
+            }
+        }
+
+        if (epoch % 100 == 0) {
+            float hof_best = hof_energies[0];
+            for (int k = 1; k < HOF_SIZE; k++) if (hof_energies[k] < hof_best) hof_best = hof_energies[k];
+            if (hof_best < 0.1f) {
+                float next_L = current_box * 0.99f;
+                if (next_L > min_L) current_box = next_L;
+            }
+        }
+    }
+
+    float density = (total_area > 0.0f) ? (total_area / (current_box * current_box)) : 0.0f;
+    if (csv_log) {
+        fprintf(csv_log, "%d,%.4f,%.4f\n", n_polys, current_box, density);
+        fflush(csv_log);
+    }
+
+    gpu_free_soa(&soa);
+
+    free(h_x);
+    free(h_y);
+    free(h_a);
+    free(h_t);
+    free(h_accept);
+    free(host_energies);
+    free(hof_energies);
+    free(hof_fingerprints);
+    free(snap_x);
+    free(snap_y);
+    free(snap_a);
+    free(hof_x);
+    free(hof_y);
+    free(hof_a);
+}
+
+void run_simulation(int n_chains, int n_polys, int n_epochs) {
+    run_single_simulation(n_chains, n_polys, n_epochs, 0.0, NULL);
+}
+
+void run_sweep_step(int n_polys, int n_epochs, void* csv_file_ptr) {
+    double base_area = 0.0;
+    Poly tmp_tree = make_tree_poly_local();
+    base_area = poly_area(&tmp_tree);
+    if (base_area < 0.0) base_area = -base_area;
+    free(tmp_tree.v);
+    run_single_simulation(200, n_polys, n_epochs, base_area, (FILE*)csv_file_ptr);
+}
+
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
     signal(SIGINT, handle_sig);
+
+    if (argc > 1 && strcmp(argv[1], "--test") == 0) {
+        run_all_tests();
+        return 0;
+    }
+
+    if (argc == 1 || (argc > 1 && strcmp(argv[1], "--sweep") == 0) || argc >= 3) {
+        int arg_offset = (argc > 1 && strcmp(argv[1], "--sweep") == 0) ? 1 : 0;
+        int start_n = 1;
+        int end_n = 200;
+        char output_filename[256] = "sweep_results.csv";
+
+        if (argc >= 3 + arg_offset) {
+            start_n = atoi(argv[1 + arg_offset]);
+            end_n = atoi(argv[2 + arg_offset]);
+        }
+        if (argc >= 4 + arg_offset) {
+            strncpy(output_filename, argv[3 + arg_offset], sizeof(output_filename) - 1);
+            output_filename[sizeof(output_filename) - 1] = '\0';
+        }
+        if (start_n < 1) start_n = 1;
+        if (end_n < start_n) end_n = start_n;
+
+        printf(">> JOB STARTED: N=%d to %d. Output: %s\n", start_n, end_n, output_filename);
+
+        FILE* csv = fopen(output_filename, "w");
+        if (!csv) {
+            fprintf(stderr, "Error opening file %s\n", output_filename);
+            return 1;
+        }
+        fprintf(csv, "N,Final_L,Density\n");
+        fflush(csv);
+
+        for (int n = start_n; n <= end_n; n++) {
+            run_sweep_step(n, 5000, csv);
+        }
+        fclose(csv);
+        printf(">> JOB COMPLETE: %s\n", output_filename);
+        return 0;
+    }
 
     unsigned seed = (unsigned)time(NULL);
     int checkpoint_every = CHECKPOINT_SEC;
@@ -176,6 +396,15 @@ int main(int argc, char** argv) {
     Poly tree = make_tree_poly_local();
     Triangulation T = triangulate_earclip(&tree);
     ConvexDecomp D = convex_decomp_merge_tris(&tree, &T);
+    float min_L_theoretical = 0.0f;
+    {
+        double area = poly_area(&tree);
+        if (area < 0.0) area = -area;
+        if (area > 0.0) {
+            min_L_theoretical = (float)sqrt(area * (double)n_polys);
+        }
+    }
+    printf("[Host] Theoretical min box size ~ %.4f\n", min_L_theoretical);
 
     BakedGeometry baked;
     if (!baked_geometry_build(&D, &baked)) {
@@ -240,6 +469,17 @@ int main(int argc, char** argv) {
     float *snap_y = (float*)malloc(n_polys * sizeof(float));
     float *snap_a = (float*)malloc(n_polys * sizeof(float));
 
+    int HOF_SIZE = 5;
+    float* hof_x = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+    float* hof_y = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+    float* hof_a = (float*)malloc((size_t)HOF_SIZE * n_polys * sizeof(float));
+    float* hof_energies = (float*)malloc((size_t)HOF_SIZE * sizeof(float));
+    float* hof_fingerprints = (float*)malloc((size_t)HOF_SIZE * sizeof(float));
+    for (int k = 0; k < HOF_SIZE; k++) {
+        hof_energies[k] = 1e9f;
+        hof_fingerprints[k] = -1.0f;
+    }
+
     FILE* logf = fopen("results.csv", "w");
     if (logf) {
         fprintf(logf, "t_sec,step,L,minE,medianE,p10E,p90E,acceptRateHot,acceptRateCold,swapsAccepted,broadphaseRejectRate\n");
@@ -302,9 +542,62 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (e > 0 && (e % 10 == 0)) {
+            perform_swaps(host_energies, h_t);
+            gpu_sync_metadata(&soa, NULL, h_t, true);
+        }
+
+        if (e > 0 && (e % 20 == 0) && best_idx >= 0) {
+            gpu_download_chain_geometry(&soa, best_idx, snap_x, snap_y, snap_a, n_polys, n_chains);
+            float fp = calculate_fingerprint(snap_x, snap_y, n_polys);
+
+            int worst_hof = 0;
+            for (int k = 1; k < HOF_SIZE; k++) {
+                if (hof_energies[k] > hof_energies[worst_hof]) worst_hof = k;
+            }
+
+            bool unique = true;
+            for (int k = 0; k < HOF_SIZE; k++) {
+                if (hof_energies[k] < 1e8f && fabsf(fp - hof_fingerprints[k]) < 0.5f) {
+                    unique = false;
+                    break;
+                }
+            }
+
+            if (unique && best_E < hof_energies[worst_hof]) {
+                hof_energies[worst_hof] = best_E;
+                hof_fingerprints[worst_hof] = fp;
+                memcpy(&hof_x[(size_t)worst_hof * n_polys], snap_x, (size_t)n_polys * sizeof(float));
+                memcpy(&hof_y[(size_t)worst_hof * n_polys], snap_y, (size_t)n_polys * sizeof(float));
+                memcpy(&hof_a[(size_t)worst_hof * n_polys], snap_a, (size_t)n_polys * sizeof(float));
+                printf(">> [HOF] New Elite in Slot %d (E: %.4f)\n", worst_hof, best_E);
+            }
+        }
+
+        if (e > 500 && (e % 100 == 0)) {
+            int elite_idx = rand() % HOF_SIZE;
+            if (hof_energies[elite_idx] < 1e8f) {
+                int target = rand() % n_chains;
+                gpu_upload_chain_geometry(&soa, target,
+                                          &hof_x[(size_t)elite_idx * n_polys],
+                                          &hof_y[(size_t)elite_idx * n_polys],
+                                          &hof_a[(size_t)elite_idx * n_polys],
+                                          n_polys, n_chains);
+                float hot_T = 0.1f;
+                h_t[target] = hot_T;
+                gpu_sync_metadata(&soa, NULL, h_t, true);
+            }
+        }
+
         if (best_E < 1e-4f) {
-            current_box *= 0.99f;
-            printf("[Epoch %d] Shrinking L -> %.4f\n", e, current_box);
+            float next_L = current_box * 0.99f;
+            if (min_L_theoretical > 0.0f && next_L < min_L_theoretical) {
+                next_L = min_L_theoretical;
+            }
+            if (next_L < current_box) {
+                current_box = next_L;
+                printf("[Epoch %d] Shrinking L -> %.4f (min %.4f)\n", e, current_box, min_L_theoretical);
+            }
         }
 
         if (best_E <= -999999.0f) {
@@ -360,6 +653,11 @@ int main(int argc, char** argv) {
     if (stats_csv) fclose(stats_csv);
     if (logf) fclose(logf);
     free(host_energies);
+    free(hof_x);
+    free(hof_y);
+    free(hof_a);
+    free(hof_energies);
+    free(hof_fingerprints);
     free(snap_x);
     free(snap_y);
     free(snap_a);
