@@ -69,7 +69,12 @@ Triangulation triangulate_earclip(const Poly *pin){
 
     int m=n;
     int guard=0;
-    while(m > 2 && guard < 10000){
+    int max_attempts = n * n + 100;
+    while(m > 2){
+        if (guard++ > max_attempts) {
+            fprintf(stderr, "ERROR: earclip watchdog tripped (n=%d, remaining=%d).\n", n, m);
+            break;
+        }
         int ear_found=0;
         for(int i=0;i<m;i++){
             if(is_ear(&p, idx, m, i)){
@@ -84,7 +89,6 @@ Triangulation triangulate_earclip(const Poly *pin){
             }
         }
         if(!ear_found) break;
-        guard++;
     }
 
     free(idx);

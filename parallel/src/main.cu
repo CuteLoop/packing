@@ -55,7 +55,8 @@ static int fsync_file(FILE* f) {
 }
 
 static void save_checkpoint(const char* filename, float box_size, int step, DeviceSoA* soa,
-                            const float* temps, const int* accept, const void* rng_state) {
+                            const float* temps, const int* accept, const void* rng_state,
+                            int n_chains, int n_polys, int steps_per_launch) {
     char tmp_name[256];
     snprintf(tmp_name, sizeof(tmp_name), "%s.tmp", filename);
 
@@ -65,28 +66,28 @@ static void save_checkpoint(const char* filename, float box_size, int step, Devi
     CheckpointHeader hdr = {
         .box_size = box_size,
         .step = step,
-        .n_chains = N_CHAINS,
-        .n_polys = N_POLYS,
-        .steps_per_launch = STEPS_PER_LAUNCH,
+        .n_chains = n_chains,
+        .n_polys = n_polys,
+        .steps_per_launch = steps_per_launch,
         .step_dx = 1.0f,
         .step_dy = 1.0f,
         .step_da = 0.5f
     };
     fwrite(&hdr, sizeof(hdr), 1, f);
 
-    float *h_x = (float*)malloc(N_CHAINS * N_POLYS * sizeof(float));
-    float *h_y = (float*)malloc(N_CHAINS * N_POLYS * sizeof(float));
-    float *h_a = (float*)malloc(N_CHAINS * N_POLYS * sizeof(float));
-    float *h_e = (float*)malloc(N_CHAINS * sizeof(float));
+    float *h_x = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float *h_y = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float *h_a = (float*)malloc((size_t)n_chains * n_polys * sizeof(float));
+    float *h_e = (float*)malloc((size_t)n_chains * sizeof(float));
 
-    gpu_download_state(soa, h_x, h_y, h_a, h_e, N_CHAINS, N_POLYS);
+    gpu_download_state(soa, h_x, h_y, h_a, h_e, n_chains, n_polys);
 
-    fwrite(h_x, sizeof(float), N_CHAINS * N_POLYS, f);
-    fwrite(h_y, sizeof(float), N_CHAINS * N_POLYS, f);
-    fwrite(h_a, sizeof(float), N_CHAINS * N_POLYS, f);
-    fwrite(temps, sizeof(float), N_CHAINS, f);
-    fwrite(accept, sizeof(int), N_CHAINS, f);
-    fwrite(rng_state, sizeof(curandState), N_CHAINS, f);
+    fwrite(h_x, sizeof(float), (size_t)n_chains * n_polys, f);
+    fwrite(h_y, sizeof(float), (size_t)n_chains * n_polys, f);
+    fwrite(h_a, sizeof(float), (size_t)n_chains * n_polys, f);
+    fwrite(temps, sizeof(float), (size_t)n_chains, f);
+    fwrite(accept, sizeof(int), (size_t)n_chains, f);
+    fwrite(rng_state, sizeof(curandState), (size_t)n_chains, f);
 
     free(h_x); free(h_y); free(h_a); free(h_e);
     fflush(f);
@@ -99,24 +100,24 @@ static void save_checkpoint(const char* filename, float box_size, int step, Devi
 
 static int load_checkpoint(const char* filename, float* box_size, int* step,
                            float* h_x, float* h_y, float* h_a, float* h_t,
-                           int* h_accept, void* h_rng) {
+                           int* h_accept, void* h_rng, int n_chains, int n_polys) {
     FILE* f = fopen(filename, "rb");
     if (!f) return 0;
 
     CheckpointHeader hdr;
     if (fread(&hdr, sizeof(hdr), 1, f) != 1) { fclose(f); return 0; }
-    if (hdr.n_chains != N_CHAINS || hdr.n_polys != N_POLYS) { fclose(f); return 0; }
+    if (hdr.n_chains != n_chains || hdr.n_polys != n_polys) { fclose(f); return 0; }
 
     *box_size = hdr.box_size;
     *step = hdr.step;
 
-    size_t nstate = (size_t)N_CHAINS * N_POLYS;
+    size_t nstate = (size_t)n_chains * n_polys;
     if (fread(h_x, sizeof(float), nstate, f) != nstate) { fclose(f); return 0; }
     if (fread(h_y, sizeof(float), nstate, f) != nstate) { fclose(f); return 0; }
     if (fread(h_a, sizeof(float), nstate, f) != nstate) { fclose(f); return 0; }
-    if (fread(h_t, sizeof(float), N_CHAINS, f) != (size_t)N_CHAINS) { fclose(f); return 0; }
-    if (fread(h_accept, sizeof(int), N_CHAINS, f) != (size_t)N_CHAINS) { fclose(f); return 0; }
-    if (fread(h_rng, sizeof(curandState), N_CHAINS, f) != (size_t)N_CHAINS) { fclose(f); return 0; }
+    if (fread(h_t, sizeof(float), (size_t)n_chains, f) != (size_t)n_chains) { fclose(f); return 0; }
+    if (fread(h_accept, sizeof(int), (size_t)n_chains, f) != (size_t)n_chains) { fclose(f); return 0; }
+    if (fread(h_rng, sizeof(curandState), (size_t)n_chains, f) != (size_t)n_chains) { fclose(f); return 0; }
 
     fclose(f);
     return 1;
@@ -423,7 +424,7 @@ int main(int argc, char** argv) {
     int* h_accept = (int*)calloc(n_chains, sizeof(int));
     void* h_rng = malloc(n_chains * sizeof(curandState));
 
-    if (resume && load_checkpoint("run_checkpoint.bin", &current_box, &start_step, h_x, h_y, h_a, h_t, h_accept, h_rng)) {
+    if (resume && load_checkpoint("run_checkpoint.bin", &current_box, &start_step, h_x, h_y, h_a, h_t, h_accept, h_rng, n_chains, n_polys)) {
         gpu_upload_state(&soa, h_x, h_y, h_a, n_chains, n_polys);
         gpu_sync_metadata(&soa, h_t, NULL, n_chains);
         gpu_sync_rng(&soa, h_rng, n_chains, true);
@@ -575,7 +576,7 @@ int main(int argc, char** argv) {
 
         if (time(NULL) - last_ckpt > checkpoint_every) {
             gpu_sync_rng(&soa, h_rng, n_chains, false);
-            save_checkpoint("run_checkpoint.bin", current_box, total_launches, &soa, h_t, h_accept, h_rng);
+            save_checkpoint("run_checkpoint.bin", current_box, total_launches, &soa, h_t, h_accept, h_rng, n_chains, n_polys, STEPS_PER_LAUNCH);
             last_ckpt = time(NULL);
         }
 

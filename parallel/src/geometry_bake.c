@@ -28,6 +28,12 @@ int baked_geometry_build(const ConvexDecomp *D, BakedGeometry *out)
     int cursor = 0;
     for (int i = 0; i < D->nParts; i++) {
         const ConvexPart *p = &D->parts[i];
+        if (p->n < 0 || cursor < 0 || (cursor + p->n) > total) {
+            fprintf(stderr, "FATAL: geometry bake overflow (part %d) cursor=%d part_n=%d total=%d\n",
+                    i, cursor, p->n, total);
+            baked_geometry_free(out);
+            return 0;
+        }
         out->partStart[i] = cursor;
         out->partCount[i] = p->n;
 
