@@ -200,7 +200,7 @@ static void run_single_simulation(int n_chains, int n_polys, int n_epochs, doubl
     }
 
     gpu_upload_state(&soa, h_x, h_y, h_a, n_chains, n_polys);
-    gpu_sync_metadata(&soa, NULL, h_t, true);
+    gpu_sync_metadata(&soa, h_t, NULL, n_chains);
 
     float* host_energies = (float*)malloc((size_t)n_chains * sizeof(float));
     int HOF_SIZE = 5;
@@ -234,7 +234,7 @@ static void run_single_simulation(int n_chains, int n_polys, int n_epochs, doubl
 
         if (epoch % 10 == 0) {
             perform_swaps(host_energies, h_t);
-            gpu_sync_metadata(&soa, NULL, h_t, true);
+            gpu_sync_metadata(&soa, h_t, NULL, n_chains);
         }
 
         if (epoch % 50 == 0 && best_idx >= 0) {
@@ -270,7 +270,7 @@ static void run_single_simulation(int n_chains, int n_polys, int n_epochs, doubl
                                           &hof_a[(size_t)elite_idx * n_polys],
                                           n_polys, n_chains);
                 h_t[target] = 0.1f;
-                gpu_sync_metadata(&soa, NULL, h_t, true);
+                gpu_sync_metadata(&soa, h_t, NULL, n_chains);
             }
         }
 
@@ -431,7 +431,7 @@ int main(int argc, char** argv) {
 
     if (resume && load_checkpoint("run_checkpoint.bin", &current_box, &start_step, h_x, h_y, h_a, h_t, h_accept, h_rng)) {
         gpu_upload_state(&soa, h_x, h_y, h_a, n_chains, n_polys);
-        gpu_sync_metadata(&soa, NULL, h_t, true);
+        gpu_sync_metadata(&soa, h_t, NULL, n_chains);
         gpu_sync_rng(&soa, h_rng, n_chains, true);
         gpu_sync_accept(&soa, h_accept, n_chains, true);
         printf("[Host] Resumed from checkpoint at step %d, L=%.4f\n", start_step, current_box);
@@ -449,7 +449,7 @@ int main(int argc, char** argv) {
             }
         }
         gpu_upload_state(&soa, h_x, h_y, h_a, n_chains, n_polys);
-        gpu_sync_metadata(&soa, NULL, h_t, true);
+        gpu_sync_metadata(&soa, h_t, NULL, n_chains);
     }
 
     free(h_x); free(h_y); free(h_a);
@@ -508,31 +508,16 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (e % 10 == 0 && best_idx >= 0) {
+        if (e % 100 == 0 && best_idx >= 0) {
             printf("[Epoch %d] Best Energy: %.5f (Chain %d)\n", e, best_E, best_idx);
         }
 
-        if (stats_csv) {
+        if (stats_csv && e % 100 == 0) {
             fprintf(stats_csv, "%d,%.6f,%.6f\n", e, best_E, current_box);
             fflush(stats_csv);
         }
 
-        if ((e % 20 == 0 || e == n_epochs - 1) && best_idx >= 0) {
-            gpu_download_chain_geometry(&soa, best_idx, snap_x, snap_y, snap_a, n_polys, n_chains);
-            char fname[64];
-            snprintf(fname, sizeof(fname), "frames/epoch_%04d.txt", e);
-            FILE* fgeom = fopen(fname, "w");
-            if (fgeom) {
-                fprintf(fgeom, "X,Y,Angle\n");
-                for (int k = 0; k < n_polys; k++) {
-                    fprintf(fgeom, "%.4f,%.4f,%.4f\n", snap_x[k], snap_y[k], snap_a[k]);
-                }
-                fclose(fgeom);
-                printf("[Host] Saved snapshot to %s\n", fname);
-            }
-        }
-
-        if (best_idx >= 0 && e > 0 && (e % 10 == 0)) {
+        if (best_idx >= 0 && e > 0 && (e % 100 == 0)) {
             printf("[Collab] Performing genetic exchange at epoch %d...\n", e);
             int n_replace = 25;
             if (n_replace > n_chains) n_replace = n_chains - 1;
@@ -542,12 +527,12 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (e > 0 && (e % 10 == 0)) {
+        if (e > 0 && (e % 100 == 0)) {
             perform_swaps(host_energies, h_t);
-            gpu_sync_metadata(&soa, NULL, h_t, true);
+            gpu_sync_metadata(&soa, h_t, NULL, n_chains);
         }
 
-        if (e > 0 && (e % 20 == 0) && best_idx >= 0) {
+        if (e > 0 && (e % 100 == 0) && best_idx >= 0) {
             gpu_download_chain_geometry(&soa, best_idx, snap_x, snap_y, snap_a, n_polys, n_chains);
             float fp = calculate_fingerprint(snap_x, snap_y, n_polys);
 
@@ -585,11 +570,11 @@ int main(int argc, char** argv) {
                                           n_polys, n_chains);
                 float hot_T = 0.1f;
                 h_t[target] = hot_T;
-                gpu_sync_metadata(&soa, NULL, h_t, true);
+                gpu_sync_metadata(&soa, h_t, NULL, n_chains);
             }
         }
 
-        if (best_E < 1e-4f) {
+        if (e % 100 == 0 && best_E < 1e-4f) {
             float next_L = current_box * 0.99f;
             if (min_L_theoretical > 0.0f && next_L < min_L_theoretical) {
                 next_L = min_L_theoretical;

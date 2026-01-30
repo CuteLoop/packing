@@ -14,6 +14,7 @@ extern "C" void gpu_upload_geometry(GpuBakedGeometry* host_geo) {
 
 // --- 2. Math Helpers (Device) ---
 #define PI 3.1415926535f
+#define SAT_EPSILON 1e-5f
 
 __device__ inline float wrap_angle(float a) {
     while (a > PI) a -= 2.0f * PI;
@@ -83,7 +84,7 @@ __device__ float check_pair_overlap(
                     if(p > max_b) max_b = p;
                 }
 
-                if (max_a < min_b || max_b < min_a) {
+                if (max_a < min_b - SAT_EPSILON || max_b < min_a - SAT_EPSILON) {
                     separated = true;
                     break;
                 }
@@ -113,7 +114,7 @@ __device__ float check_pair_overlap(
                     if(p > max_b) max_b = p;
                 }
 
-                if (max_a < min_b || max_b < min_a) {
+                if (max_a < min_b - SAT_EPSILON || max_b < min_a - SAT_EPSILON) {
                     separated = true;
                     break;
                 }

@@ -29,6 +29,8 @@ void gpu_alloc_soa(DeviceSoA* soa, int n_chains, int n_polys) {
     CUDA_CHECK(cudaMalloc((void**)&soa->rng, n_chains * sizeof(curandState)));
 
     CUDA_CHECK(cudaMemset(soa->accept_count, 0, n_chains * sizeof(int)));
+    CUDA_CHECK(cudaMemset(soa->energy, 0, meta_size));
+    CUDA_CHECK(cudaMemset(soa->chain_energies, 0, meta_size));
 }
 
 void gpu_free_soa(DeviceSoA* soa) {
@@ -120,15 +122,22 @@ void gpu_download_state(DeviceSoA* dev_soa,
 
 extern "C" void gpu_sync_metadata(
     DeviceSoA* dev_soa,
-    float* host_energy,
     float* host_temp,
-    bool to_gpu
+    float* host_energy,
+    int n_chains
 ) {
-    if (to_gpu) {
-        CUDA_CHECK(cudaMemcpy(dev_soa->temperature, host_temp, MAX_CHAINS * sizeof(float), cudaMemcpyHostToDevice));
-    } else {
-        CUDA_CHECK(cudaMemcpy(host_energy, dev_soa->energy, MAX_CHAINS * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(host_temp, dev_soa->temperature, MAX_CHAINS * sizeof(float), cudaMemcpyDeviceToHost));
+    size_t copy_size = (size_t)n_chains * sizeof(float);
+
+    if (host_temp) {
+        CUDA_CHECK(cudaMemcpy(dev_soa->temperature, host_temp, copy_size, cudaMemcpyHostToDevice));
+    }
+    if (host_energy) {
+        CUDA_CHECK(cudaMemcpy(host_energy, dev_soa->energy, copy_size, cudaMemcpyDeviceToHost));
+    }
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "!! Sync Error: %s\n", cudaGetErrorString(err));
     }
 }
 

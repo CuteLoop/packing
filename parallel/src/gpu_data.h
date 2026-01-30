@@ -49,9 +49,9 @@ void gpu_download_state(DeviceSoA* dev_soa,
 
 void gpu_sync_metadata(
     DeviceSoA* dev_soa,
-    float* host_energy,
     float* host_temp,
-    bool to_gpu
+    float* host_energy,
+    int n_chains
 );
 
 void gpu_init_rng(DeviceSoA* soa, int n_chains, unsigned long long seed);
