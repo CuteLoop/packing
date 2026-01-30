@@ -83,3 +83,20 @@ slurm-*.err
 # Misc
 # =========================
 .cache/
+
+# =========================
+# C/CUDA build artifacts
+# =========================
+*.o
+*.obj
+*.lib
+*.dll
+*.exe
+chimera_run
+test_*.csv
+sweep_results.csv
+
+# =========================
+# Legacy folder
+# =========================
+legacy_cpu/

@@ -39,6 +39,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#ifdef __AVX2__
+#include <immintrin.h>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -64,6 +67,12 @@ static void ensure_dir(const char *name) {
 static double now_seconds(void) {
     // coarse wall time is fine here
     return (double)time(NULL);
+}
+
+static int near_time_limit(double start_time, double limit_sec, double margin_sec) {
+    if (limit_sec <= 0.0) return 0;
+    double elapsed = now_seconds() - start_time;
+    return (elapsed >= (limit_sec - margin_sec));
 }
 
 static void usage(const char *argv0) {
@@ -270,17 +279,41 @@ static double outside_penalty_aabb(const AABB *b, double L) {
 static inline void proj3_idx(const Vec2 *w, int i0, int i1, int i2,
                              double ax, double ay, double *mn, double *mx)
 {
-    double v0 = w[i0].x * ax + w[i0].y * ay;
-    double v1 = w[i1].x * ax + w[i1].y * ay;
-    double v2 = w[i2].x * ax + w[i2].y * ay;
+#ifdef __AVX2__
+    __m256d x_vec = _mm256_set_pd(w[i0].x, w[i2].x, w[i1].x, w[i0].x);
+    __m256d y_vec = _mm256_set_pd(w[i0].y, w[i2].y, w[i1].y, w[i0].y);
+    __m256d ax_vec = _mm256_set1_pd(ax);
+    __m256d ay_vec = _mm256_set1_pd(ay);
 
-    double lo = v0, hi = v0;
-    if (v1 < lo) lo = v1;
-    if (v1 > hi) hi = v1;
-    if (v2 < lo) lo = v2;
-    if (v2 > hi) hi = v2;
+    __m256d dots = _mm256_fmadd_pd(x_vec, ax_vec, _mm256_mul_pd(y_vec, ay_vec));
 
-    *mn = lo; *mx = hi;
+    __m256d shuf = _mm256_permute4x64_pd(dots, _MM_SHUFFLE(2, 3, 0, 1));
+    __m256d min_v = _mm256_min_pd(dots, shuf);
+    __m256d max_v = _mm256_max_pd(dots, shuf);
+
+    __m256d shuf2 = _mm256_permute4x64_pd(min_v, _MM_SHUFFLE(1, 0, 3, 2));
+    min_v = _mm256_min_pd(min_v, shuf2);
+    shuf2 = _mm256_permute4x64_pd(max_v, _MM_SHUFFLE(1, 0, 3, 2));
+    max_v = _mm256_max_pd(max_v, shuf2);
+
+    *mn = _mm256_cvtsd_f64(min_v);
+    *mx = _mm256_cvtsd_f64(max_v);
+#else
+    double dot = w[i0].x * ax + w[i0].y * ay;
+    double mnv = dot;
+    double mxv = dot;
+
+    dot = w[i1].x * ax + w[i1].y * ay;
+    if (dot < mnv) mnv = dot;
+    if (dot > mxv) mxv = dot;
+
+    dot = w[i2].x * ax + w[i2].y * ay;
+    if (dot < mnv) mnv = dot;
+    if (dot > mxv) mxv = dot;
+
+    *mn = mnv;
+    *mx = mxv;
+#endif
 }
 
 static int tri_sat_penetration_idx(const Vec2 *wi, const Vec2 *wj,
@@ -770,6 +803,29 @@ static void grid_init_layout(State *s, int cols, int rows, double gap, double *L
     }
 
     if (L_grid_out) *L_grid_out = Lg;
+}
+
+static void grid_init_layout_jittered(State *s, RNG *rng, double jitter_frac) {
+    int n_side = (int)ceil(sqrt((double)s->N));
+    if (n_side < 1) n_side = 1;
+
+    double cell_size = s->L / (double)n_side;
+    double half = 0.5 * s->L;
+    double jitter = jitter_frac * cell_size;
+
+    for (int i = 0; i < s->N; i++) {
+        int ix = i % n_side;
+        int iy = i / n_side;
+
+        double cx = -half + (ix + 0.5) * cell_size;
+        double cy = -half + (iy + 0.5) * cell_size;
+
+        s->cx[i] = cx + rng_uniform(rng, -jitter, jitter);
+        s->cy[i] = cy + rng_uniform(rng, -jitter, jitter);
+        s->th[i] = rng_uniform(rng, 0.0, 2.0 * M_PI);
+    }
+    update_all(s);
+    rebuild_grid(s);
 }
 
 // ---------------- CSV init loader + optional read L from header ----------------
@@ -1552,22 +1608,18 @@ int main(int argc, char **argv) {
             rebuild_grid(&s);
         }
     } else {
-        // mild randomization around grid layout to break symmetry
-        double half = 0.5 * s.L;
-        for (int i = 0; i < s.N; i++) {
-            s.cx[i] += rng_uniform(&rng, -0.02 * half, 0.02 * half);
-            s.cy[i] += rng_uniform(&rng, -0.02 * half, 0.02 * half);
-            s.th[i]  = wrap_angle_0_2pi(rng_uniform(&rng, 0.0, 2.0 * M_PI));
-        }
-        update_all(&s);
-        rebuild_grid(&s);
+        // jittered grid to reduce initial overlaps at high N
+        grid_init_layout_jittered(&s, &rng, 0.20);
     }
 
     printf("Grid init: cols=%d rows=%d L_grid=%.6g -> start L=%.6g\n", cols, rows, L_grid, s.L);
 
+    const double main_start_time = now_seconds();
+    const double time_margin_sec = 300.0; // stop 5 minutes early to flush outputs
+
     // ---- Two-phase schedule ----
     PhaseParams A;
-    A.iters = 70000;
+    A.iters = 500000;
     A.T_start = 0.30;
     A.T_end   = 3e-4;
     A.step_xy_start = 1.0;
@@ -1592,11 +1644,11 @@ int main(int argc, char **argv) {
     A.log_every  = A.iters / 6;
     A.overlap_power = 1.0;
     A.reheat_acc = 0.02;
-    A.reheat_factor = 1.5;
+    A.reheat_factor = 2.0;
     A.T_max = A.T_start * 2.0;
 
     PhaseParams B;
-    B.iters = 35000;
+    B.iters = 500000;
     B.T_start = 0.06;
     B.T_end   = 1e-6;
     B.step_xy_start = 0.45;
@@ -1621,7 +1673,7 @@ int main(int argc, char **argv) {
     B.log_every  = B.iters / 6;
     B.overlap_power = 2.0;
     B.reheat_acc = 0.02;
-    B.reheat_factor = 1.5;
+    B.reheat_factor = 2.0;
     B.T_max = B.T_start * 2.0;
 
     // ---- Demo mode overrides ----
@@ -1642,12 +1694,19 @@ int main(int argc, char **argv) {
     // ---- Outer loop controls ----
     const double feas_tol = 1e-10;
     const int bracket_max_steps = 35;
-    const int bisect_steps = 26;
+    const int bisect_steps = 12;
     const double shrink_factor = 0.97;
     const double grow_factor   = 1.05;
     const double warm_safety   = 0.98;
 
     int N = cfg.N;
+
+    // For a 2-hour sprint, keep bracket/bisect trials lean by default.
+    if (cfg.time_limit_sec > 0.0) {
+        if (trials_bracket > 3) trials_bracket = 3;
+        if (trials_bisect > 1) trials_bisect = 1;
+        if (cfg.trials_polish > 2) cfg.trials_polish = 2;
+    }
 
     double *best_cx = (double*)malloc((size_t)N * sizeof(double));
     double *best_cy = (double*)malloc((size_t)N * sizeof(double));
@@ -1697,6 +1756,11 @@ int main(int argc, char **argv) {
         int found_infeas = 0;
         for (int k = 0; k < bracket_max_steps; k++) {
             maybe_stop_and_flush(&s, "bracket loop (top)");
+            if (near_time_limit(main_start_time, cfg.time_limit_sec, time_margin_sec)) {
+                fprintf(stderr, "[time] near time limit in bracketing; stopping early.\n");
+                found_infeas = 1;
+                break;
+            }
             double L_new = L_curr * shrink_factor;
 
             if (L_new <= L_area_infeas) {
@@ -1753,6 +1817,10 @@ int main(int argc, char **argv) {
         int found_feas = 0;
         for (int k = 0; k < bracket_max_steps; k++) {
             maybe_stop_and_flush(&s, "bracket grow loop (top)");
+            if (near_time_limit(main_start_time, cfg.time_limit_sec, time_margin_sec)) {
+                fprintf(stderr, "[time] near time limit in bracketing; stopping early.\n");
+                break;
+            }
 
             double L_new = L_curr * grow_factor;
             if (L_new < L_area * 1.01) L_new = L_area * 1.01;
@@ -1838,6 +1906,10 @@ int main(int argc, char **argv) {
 
     for (int it = 0; it < bisect_steps; it++) {
         maybe_stop_and_flush(&s, "bisect loop (top)");
+        if (near_time_limit(main_start_time, cfg.time_limit_sec, time_margin_sec)) {
+            fprintf(stderr, "[time] near time limit in bisection; stopping early.\n");
+            break;
+        }
         double L_mid = 0.5 * (L_low + L_high);
 
         if (provably_infeasible_by_area(L_mid, L_area_infeas)) {
@@ -1908,6 +1980,17 @@ int main(int argc, char **argv) {
 
     best_snapshot_update(&s, final_feas);
     maybe_stop_and_flush(&s, "after bisection write");
+
+    if (near_time_limit(main_start_time, cfg.time_limit_sec, time_margin_sec)) {
+        fprintf(stderr, "[time] near time limit after bisection; flushing and exiting.\n");
+        best_snapshot_flush_files(&s);
+        if (g_logger) logger_close();
+        free(best_cx); free(best_cy); free(best_th);
+        free(best2_cx); free(best2_cy); free(best2_th);
+        free(best_high_cx); free(best_high_cy); free(best_high_th);
+        state_free(&s);
+        return 0;
+    }
 
     // ---------------- Long-running shrink search ----------------
     double start_time = now_seconds();
