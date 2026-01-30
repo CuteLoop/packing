@@ -20,6 +20,9 @@ typedef struct DeviceSoA {
     int* accept_count;
 
     curandState* rng;
+
+    int allocated_chains;
+    int allocated_polys;
 } DeviceSoA;
 
 #define SOA_IDX(poly_idx, chain_idx, num_chains) ((poly_idx) * (num_chains) + (chain_idx))

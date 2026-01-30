@@ -15,6 +15,9 @@ void gpu_alloc_soa(DeviceSoA* soa, int n_chains, int n_polys) {
     size_t big_size = (size_t)n_chains * n_polys * sizeof(float);
     size_t meta_size = (size_t)n_chains * sizeof(float);
 
+    soa->allocated_chains = n_chains;
+    soa->allocated_polys = n_polys;
+
     printf("Allocating GPU Memory: %.2f MB per state array.\n", big_size / (1024.0*1024.0));
 
     CUDA_CHECK(cudaMalloc((void**)&soa->pos_x, big_size));
@@ -46,6 +49,11 @@ void gpu_free_soa(DeviceSoA* soa) {
 
 void gpu_audit_memory(DeviceSoA* soa, int n_chains, int n_polys) {
     printf("\n>> GPU MEMORY AUDIT (%d chains, %d polys)\n", n_chains, n_polys);
+    if (n_chains > soa->allocated_chains || n_polys > soa->allocated_polys) {
+        printf("!! FAIL: Audit request exceeds allocation (alloc %d x %d)\n",
+               soa->allocated_chains, soa->allocated_polys);
+        exit(1);
+    }
     if (!soa->pos_x || !soa->pos_y || !soa->angle) {
         printf("!! FAIL: Position/angle buffers are NULL\n");
         exit(1);
@@ -160,6 +168,11 @@ extern "C" void gpu_sync_metadata(
     float* host_energy,
     int n_chains
 ) {
+    if (n_chains > dev_soa->allocated_chains) {
+        printf("!! FATAL: gpu_sync_metadata n_chains=%d exceeds allocation %d\n",
+               n_chains, dev_soa->allocated_chains);
+        exit(1);
+    }
     size_t copy_size = (size_t)n_chains * sizeof(float);
 
     if (host_temp) {
@@ -210,6 +223,20 @@ extern "C" void gpu_download_energies(DeviceSoA* dev_soa, float* host_dst, int n
 extern "C" void gpu_download_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
                                             float* h_x, float* h_y, float* h_ang, int n_polys, int n_chains)
 {
+    if (chain_idx < 0 || chain_idx >= dev_soa->allocated_chains) {
+        printf("!! FATAL: gpu_download_chain_geometry invalid chain_idx=%d (alloc %d)\n",
+               chain_idx, dev_soa->allocated_chains);
+        exit(1);
+    }
+    if (n_chains > dev_soa->allocated_chains || n_polys > dev_soa->allocated_polys) {
+        printf("!! FATAL: gpu_download_chain_geometry exceeds allocation (alloc %d x %d)\n",
+               dev_soa->allocated_chains, dev_soa->allocated_polys);
+        exit(1);
+    }
+    if (!h_x || !h_y || !h_ang) {
+        printf("!! FATAL: gpu_download_chain_geometry host buffers NULL\n");
+        exit(1);
+    }
     size_t total_floats = (size_t)n_chains * n_polys;
     float* temp_buf = (float*)malloc(total_floats * sizeof(float));
     if (!temp_buf) {
@@ -250,6 +277,20 @@ __global__ void k_upload_chain_geometry(float* pos_x, float* pos_y, float* angle
 extern "C" void gpu_upload_chain_geometry(DeviceSoA* dev_soa, int chain_idx,
                                            const float* h_x, const float* h_y, const float* h_ang, int n_polys, int n_chains)
 {
+    if (chain_idx < 0 || chain_idx >= dev_soa->allocated_chains) {
+        printf("!! FATAL: gpu_upload_chain_geometry invalid chain_idx=%d (alloc %d)\n",
+               chain_idx, dev_soa->allocated_chains);
+        exit(1);
+    }
+    if (n_chains > dev_soa->allocated_chains || n_polys > dev_soa->allocated_polys) {
+        printf("!! FATAL: gpu_upload_chain_geometry exceeds allocation (alloc %d x %d)\n",
+               dev_soa->allocated_chains, dev_soa->allocated_polys);
+        exit(1);
+    }
+    if (!h_x || !h_y || !h_ang) {
+        printf("!! FATAL: gpu_upload_chain_geometry host buffers NULL\n");
+        exit(1);
+    }
     float* d_x = NULL;
     float* d_y = NULL;
     float* d_a = NULL;
