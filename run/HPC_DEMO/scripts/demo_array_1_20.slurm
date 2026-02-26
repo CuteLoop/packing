@@ -13,15 +13,29 @@ set -euo pipefail
 ulimit -s unlimited
 
 # If your site uses modules:
-module purge || true
-module load gcc || true
+if [ -f /etc/profile.d/modules.sh ]; then
+  # shellcheck disable=SC1091
+  source /etc/profile.d/modules.sh
+fi
+if command -v module >/dev/null 2>&1; then
+  module purge >/dev/null 2>&1 || true
+  module load gcc  >/dev/null 2>&1 || true
+fi
 
-cd /home/samantha/Documents/2025/packing/run/HPC_DEMO
+WORKDIR="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$WORKDIR"
 
 mkdir -p logs csv img
 
+if [ ! -x bin/solver ]; then
+  echo "Building on compute node..."
+  make -s all
+fi
+
 N="${SLURM_ARRAY_TASK_ID}"
 OUTPREFIX="N${N}_job${SLURM_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
+TRIALS="${TRIALS:-5}"
+SEED=12345
 
 echo "===== START ====="
 echo "PWD:     $(pwd)"
@@ -30,15 +44,11 @@ echo "Host:    $(hostname)"
 echo "Job:     ${SLURM_JOB_ID}"
 echo "Task:    ${SLURM_ARRAY_TASK_ID}"
 echo "N:       ${N}"
-echo "Binary:  $(readlink -f bin/HPC_parallel)"
+echo "Binary:  $(readlink -f bin/solver)"
 echo "Prefix:  ${OUTPREFIX}"
 echo "==============="
 
-./bin/HPC_parallel "${N}" 12345 \
-  --run_id "${N}" \
-  --time_limit 60 \
-  --checkpoint_every 15 \
-  --out_prefix "${OUTPREFIX}"
+./bin/solver "${N}" "${TRIALS}" "${OUTPREFIX}" "${SEED}" "${N}"
 
 echo "===== DONE ====="
 echo "Time: $(date)"

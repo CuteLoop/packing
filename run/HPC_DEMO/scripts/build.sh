@@ -9,13 +9,10 @@ fi
 
 mkdir -p bin logs csv img
 
-# Safer for heterogeneous clusters than -march=native
-gcc -O3 -std=c11 -Wall -Wextra -pedantic \
-  -march=x86-64 -mtune=generic \
-  src/HPC_parallel.c -o bin/HPC_parallel -lm
+make -s all
 
-echo "Built: $(readlink -f bin/HPC_parallel)"
+echo "Built: $(readlink -f bin/solver)"
 
 # Quick sanity: show what runtime libs it will use
 echo "ldd:"
-ldd bin/HPC_parallel | sed -n '1,30p' || true
+ldd bin/solver | sed -n '1,30p' || true

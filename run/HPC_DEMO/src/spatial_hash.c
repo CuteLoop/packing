@@ -116,7 +116,10 @@ void aabb_to_cell_range(const Grid *g, const AABB *b, int *ix0, int *iy0, int *i
 	int x0, y0, x1, y1;
 	grid_cell_xy(g, b->minx, b->miny, &x0, &y0);
 	grid_cell_xy(g, b->maxx, b->maxy, &x1, &y1);
-	if (ix0) *ix0 = x0; if (iy0) *iy0 = y0; if (ix1) *ix1 = x1; if (iy1) *iy1 = y1;
+	if (ix0) *ix0 = x0;
+	if (iy0) *iy0 = y0;
+	if (ix1) *ix1 = x1;
+	if (iy1) *iy1 = y1;
 }
 
 void grid_query_neighbors(const Grid *g, const State *s, int k, cell_visit_fn visit, void *ctx) {

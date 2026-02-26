@@ -95,3 +95,61 @@ void update_instance(State *s, int i) {
         s->tri_aabb[(size_t)i * (size_t)NTRI + (size_t)t].maxy = t_maxy;
     }
 }
+
+void update_instance_rw(const double *cx, const double *cy, const double *th,
+                        Vec2 *world, AABB *aabb, AABB *tri_aabb, int i)
+{
+    double c = cos(th[i]);
+    double sn = sin(th[i]);
+
+    Vec2 *w = &world[(size_t)i * (size_t)NV];
+    for (int v = 0; v < NV; v++) {
+        double bx = BASE_V[v].x;
+        double by = BASE_V[v].y;
+        w[v].x = (bx * c - by * sn) + cx[i];
+        w[v].y = (bx * sn + by * c) + cy[i];
+    }
+
+    double minx = w[0].x;
+    double maxx = w[0].x;
+    double miny = w[0].y;
+    double maxy = w[0].y;
+    for (int v = 1; v < NV; v++) {
+        double x = w[v].x;
+        double y = w[v].y;
+        if (x < minx) minx = x;
+        if (x > maxx) maxx = x;
+        if (y < miny) miny = y;
+        if (y > maxy) maxy = y;
+    }
+
+    aabb[i].minx = minx;
+    aabb[i].maxx = maxx;
+    aabb[i].miny = miny;
+    aabb[i].maxy = maxy;
+
+    for (int t = 0; t < NTRI; t++) {
+        int i0 = TRIS[t].a;
+        int i1 = TRIS[t].b;
+        int i2 = TRIS[t].c;
+        double t_minx = w[i0].x;
+        double t_maxx = t_minx;
+        double t_miny = w[i0].y;
+        double t_maxy = t_miny;
+
+        if (w[i1].x < t_minx) t_minx = w[i1].x;
+        if (w[i1].x > t_maxx) t_maxx = w[i1].x;
+        if (w[i1].y < t_miny) t_miny = w[i1].y;
+        if (w[i1].y > t_maxy) t_maxy = w[i1].y;
+
+        if (w[i2].x < t_minx) t_minx = w[i2].x;
+        if (w[i2].x > t_maxx) t_maxx = w[i2].x;
+        if (w[i2].y < t_miny) t_miny = w[i2].y;
+        if (w[i2].y > t_maxy) t_maxy = w[i2].y;
+
+        tri_aabb[(size_t)i * (size_t)NTRI + (size_t)t].minx = t_minx;
+        tri_aabb[(size_t)i * (size_t)NTRI + (size_t)t].maxx = t_maxx;
+        tri_aabb[(size_t)i * (size_t)NTRI + (size_t)t].miny = t_miny;
+        tri_aabb[(size_t)i * (size_t)NTRI + (size_t)t].maxy = t_maxy;
+    }
+}

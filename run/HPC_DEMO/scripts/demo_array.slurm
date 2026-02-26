@@ -36,31 +36,25 @@ if command -v module >/dev/null 2>&1; then
 fi
 
 echo "Building on compute node..."
-gcc -O3 -std=c11 -Wall -Wextra -pedantic \
-  -march=x86-64 -mtune=generic \
-  src/HPC_parallel.c -o bin/HPC_parallel -lm
+make -s clean >/dev/null 2>&1 || true
+make -s all
 
-echo "Binary:  $(readlink -f bin/HPC_parallel)"
+echo "Binary:  $(readlink -f bin/solver)"
 echo "ldd:"
 ldd bin/HPC_parallel | sed -n '1,120p' || true
 echo "==============="
 
 N="${SLURM_ARRAY_TASK_ID}"
 OUTPREFIX="DEMO_N${N}_job${SLURM_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
+TRIALS="${TRIALS:-3}"
+SEED=12345
 
 echo "N:       ${N}"
 echo "Prefix:  ${OUTPREFIX}"
-echo "Running: demo mode, low trials, no_polish (guarantee quick best artifacts)"
+echo "Running: demo mode, low trials (quick best artifacts)"
 echo "==============="
 
-# Demo-bounded run: quick bracketing+bisection, and exits after writing best artifacts.
-./bin/HPC_parallel "${N}" 12345 \
-  --demo \
-  --trials_bracket 1 \
-  --trials_bisect 1 \
-  --no_polish \
-  --run_id "${N}" \
-  --out_prefix "${OUTPREFIX}"
+./bin/solver "${N}" "${TRIALS}" "${OUTPREFIX}" "${SEED}" "${N}"
 
 echo "===== DONE ====="
 echo "Time: $(date)"

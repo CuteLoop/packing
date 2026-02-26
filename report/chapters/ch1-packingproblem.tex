@@ -1,0 +1,112 @@
+\chapter{Optimal Packing of Non-Convex Polygons}
+
+This project is an excercise in optimization and High performance computing.
+   It is inspired in the classical problem of sphere packing with a twist:
+   We seek to find the smallest square container that can fit N identical
+    non-convex polygons without overlap.
+
+\section{Mathematical Formulation}
+
+We consider a set of $N$ identical non-convex polygons
+\[
+\poly = \{P_1, \dots, P_N\},
+\]
+Each polygon can be described with the state variables $(x_i, y_i, \theta_i) \in \R^2 \times [0,2\pi)$.
+
+\begin{definition}[Feasible Configuration]
+A configuration $\conf$ is feasible if:
+\begin{enumerate}
+  \item All vertices lie within the square domain $[0,L]^2$.
+  \item No two polygons overlap.
+\end{enumerate}
+\end{definition}
+
+To objective is to find the minimal $L$ such that all polygons 
+are placed inside the square without overlap. Formally, we seek to solve:
+\[
+\begin{aligned}
+\min_{L, \conf} \quad & L \\
+\text{s.t.} \quad & \conf \text{ is a feasible configuration of } \poly \text{ in } [0,L]^2.
+\end{aligned}
+\]
+
+
+\subsection{Feasibility-Based Search}
+
+A common strategy is to reduce the optimization problem to a sequence of feasibility tests. For a fixed container size $L$, one asks whether there exists a configuration $\conf$ such that all polygons fit inside $[0,L]^2$ without overlap. This leads to the decision problem
+\[
+\text{Find } \conf \quad \text{such that } \conf \text{ is feasible in } [0,L]^2.
+\]
+
+By performing a search over values of $L$. Using bisection,
+ one can approximate the minimal feasible container size.
+  This approach shifts the difficulty from direct optimization
+   to repeated feasibility detection in a highly constrained configuration space.
+
+\subsection{Energy-Based Formulations}
+
+An alternative and widely used approach replaces hard geometric
+ constraints with soft penalties by introducing an energy function of the form
+\[
+E(\conf;L) = E_{\text{overlap}}(\conf) + E_{\text{boundary}}(\conf;L),
+\]
+where overlaps and boundary violations contribute positive energy.
+ In this formulation, feasible configurations correspond to zero-energy states.
+
+This transforms the constrained optimization problem into an
+ unconstrained (but non-convex) minimization problem over
+  $\mathbb{R}^{2N} \times S^1$.
+  The resulting energy landscape is typically rugged,
+   containing many local minima corresponding to jammed or partially 
+   overlapping configurations.
+
+Energy-based formulations naturally motivate the use of stochastic optimization techniques,
+ such as simulated annealing and Monte Carlo methods. We use them to explore the configuration space
+  and find feasible or near-feasible configurations.
+   which are designed to explore complex non-convex landscapes.
+
+
+\paragraph{Computational and algorithmic challenges.}
+The packing problem studied in this work presents several fundamental difficulties,
+ both geometric and algorithmic.
+
+\begin{enumerate}
+\item \textbf{Highly non-convex energy landscape.}
+The objective function associated with packing
+design by associating a penalties to overlaps and boundary violations
+is highly non-convex. Additionally, it exhibits a large number of local minima. 
+As will be shown in the next chapter, even simplified model like 
+the Ising model  possesses a 
+ non-convex energy landscape. As a consequence,
+  purely local optimization methods get trapped in suboptimal
+   configurations, requiring use of global or 
+   stochastic optimization techniques.
+
+\item \textbf{Geometric complexity due to non-convex shapes.}
+By the nature of non-convex polygons,
+ the overlap checks require careful geometric
+  computation, often involving decomposition into convex components
+   or the evaluation of separating axes. This geometric complexity 
+   significantly increases the computational cost of evaluating
+    candidate configurations.
+
+\item \textbf{Exponential growth of the search space.}
+The configuration space grows exponentially with the number of objects $N$,
+ as each polygon contributes translational and rotational degrees of freedom.
+  Consequently, exhaustive search methods become infeasible even for moderately
+   large systems.
+
+\item \textbf{Computational intractability (NP-hardness).}
+The problem is computationally intractable in general.
+ This follows from the simplified version being hard: 
+ if all polygons are restricted to be circles. 
+ This can be seen by considering the associated \emph{decision problem}: 
+ given a set of circles with prescribed radii and a square container of 
+ fixed side length, determine whether all circles can be placed inside the 
+ square without overlap.
+
+This decision problem is known as the \emph{circle packing problem}
+ and has been shown to be NP-complete. Since circle packing is a special case of the more general polygon packing problem, it follows that the general problem is NP-hard.
+
+\end{enumerate}
+
