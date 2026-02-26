@@ -1,0 +1,1636 @@
+rm -f src/*.o chimera_run
+Compiling Host Code: src/triangulate_earclip.c
+nvcc -O3 -I./src -Xcompiler -std=c99 -arch=sm_75 -c src/triangulate_earclip.c -o src/triangulate_earclip.o
+Compiling Host Code: src/main.c
+nvcc -O3 -I./src -Xcompiler -std=c99 -arch=sm_75 -c src/main.c -o src/main.o
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:80:1: error: unknown type name 'namespace'
+ namespace curand_detail {
+ ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:80:25: error: expected '=', ',', ';', 'asm' or '__attribute__' before '{' token
+ namespace curand_detail {
+                         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:104:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_philox4x32_x.h:136:17: error: conflicting types for 'Philox_State_Incr'
+ QUALIFIERS void Philox_State_Incr(curandStatePhilox4_32_10_t* s)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_philox4x32_x.h:106:17: note: previous definition of 'Philox_State_Incr' was here
+ QUALIFIERS void Philox_State_Incr(curandStatePhilox4_32_10_t* s, unsigned long long n)
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:305:9: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template<int N>
+         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:546:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStateTest_t *state)
+                         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:103:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_mtgp32_kernel.h:195:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateMtgp32_t *state)
+                         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:559:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T, int n>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:579:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T, int n>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:635:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T, int n>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:691:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T, int N>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:710:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T, int N>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:739:17: error: conflicting types for 'skipahead'
+ QUALIFIERS void skipahead(unsigned long long n, curandStateXORWOW_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:552:17: note: previous definition of 'skipahead' was here
+ QUALIFIERS void skipahead(unsigned long long n, curandStateTest_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'skipahead':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:741:5: error: '_skipahead_inplace' undeclared (first use in this function)
+     _skipahead_inplace<curandStateXORWOW_t, 5>(n, state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:741:5: note: each undeclared identifier is reported only once for each function it appears in
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:741:24: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_inplace<curandStateXORWOW_t, 5>(n, state);
+                        ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'skipahead_sequence':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:759:5: error: '_skipahead_sequence_inplace' undeclared (first use in this function)
+     _skipahead_sequence_inplace<curandStateXORWOW_t, 5>(n, state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:759:33: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_sequence_inplace<curandStateXORWOW_t, 5>(n, state);
+                                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function '_curand_init_scratch':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:782:5: error: '_skipahead_sequence_scratch' undeclared (first use in this function)
+     _skipahead_sequence_scratch<curandStateXORWOW_t, 5>(subsequence, state, scratch);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:782:33: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_sequence_scratch<curandStateXORWOW_t, 5>(subsequence, state, scratch);
+                                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:783:5: error: '_skipahead_scratch' undeclared (first use in this function)
+     _skipahead_scratch<curandStateXORWOW_t, 5>(offset, state, scratch);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:783:24: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_scratch<curandStateXORWOW_t, 5>(offset, state, scratch);
+                        ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function '_curand_init_inplace':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:809:5: error: '_skipahead_sequence_inplace' undeclared (first use in this function)
+     _skipahead_sequence_inplace<curandStateXORWOW_t, 5>(subsequence, state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:809:33: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_sequence_inplace<curandStateXORWOW_t, 5>(subsequence, state);
+                                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:810:5: error: '_skipahead_inplace' undeclared (first use in this function)
+     _skipahead_inplace<curandStateXORWOW_t, 5>(offset, state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:810:24: error: expected expression before 'curandStateXORWOW_t'
+     _skipahead_inplace<curandStateXORWOW_t, 5>(offset, state);
+                        ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:835:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:536:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:853:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStateXORWOW_t *state)
+                         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:546:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateTest_t *state)
+                         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:878:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStatePhilox4_32_10_t *state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:853:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateXORWOW_t *state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:961:17: error: conflicting types for 'skipahead'
+ QUALIFIERS void skipahead(unsigned long long n, curandStatePhilox4_32_10_t *state)
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:739:17: note: previous definition of 'skipahead' was here
+ QUALIFIERS void skipahead(unsigned long long n, curandStateXORWOW_t *state)
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'skipahead':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:969:5: error: too many arguments to function 'Philox_State_Incr'
+     Philox_State_Incr(state, n);
+     ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:104:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_philox4x32_x.h:136:17: note: declared here
+ QUALIFIERS void Philox_State_Incr(curandStatePhilox4_32_10_t* s)
+                 ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:985:17: error: conflicting types for 'skipahead_sequence'
+ QUALIFIERS void skipahead_sequence(unsigned long long n, curandStatePhilox4_32_10_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:757:17: note: previous definition of 'skipahead_sequence' was here
+ QUALIFIERS void skipahead_sequence(unsigned long long n, curandStateXORWOW_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1012:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:835:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1149:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStateMRG32k3a_t *state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:878:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStatePhilox4_32_10_t *state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1169:17: error: conflicting types for 'skipahead'
+ QUALIFIERS void skipahead(unsigned long long n, curandStateMRG32k3a_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:961:17: note: previous definition of 'skipahead' was here
+ QUALIFIERS void skipahead(unsigned long long n, curandStatePhilox4_32_10_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1228:17: error: conflicting types for 'skipahead_sequence'
+ QUALIFIERS void skipahead_sequence(unsigned long long n, curandStateMRG32k3a_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:985:17: note: previous definition of 'skipahead_sequence' was here
+ QUALIFIERS void skipahead_sequence(unsigned long long n, curandStatePhilox4_32_10_t *state)
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1262:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1012:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1300:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1328:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1360:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(curandDirectionVectors32_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1262:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(unsigned long long seed,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'curand_init':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1370:15: error: expected expression before 'curandStateSobol32_t'
+     skipahead<curandStateSobol32_t *>(offset, state);
+               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1387:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(curandDirectionVectors32_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1360:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(curandDirectionVectors32_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'curand_init':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1398:15: error: expected expression before 'curandStateScrambledSobol32_t'
+     skipahead<curandStateScrambledSobol32_t *>(offset, state);
+               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1419:16: error: conflicting types for '__curand_find_trailing_zero'
+ QUALIFIERS int __curand_find_trailing_zero(unsigned long long x)
+                ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1401:16: note: previous definition of '__curand_find_trailing_zero' was here
+ QUALIFIERS int __curand_find_trailing_zero(unsigned int x)
+                ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1451:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(curandDirectionVectors64_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1387:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(curandDirectionVectors32_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'curand_init':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1461:15: error: expected expression before 'curandStateSobol64_t'
+     skipahead<curandStateSobol64_t *>(offset, state);
+               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1479:17: error: conflicting types for 'curand_init'
+ QUALIFIERS void curand_init(curandDirectionVectors64_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1451:17: note: previous definition of 'curand_init' was here
+ QUALIFIERS void curand_init(curandDirectionVectors64_t direction_vectors,
+                 ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: In function 'curand_init':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1490:15: error: expected expression before 'curandStateScrambledSobol64_t'
+     skipahead<curandStateScrambledSobol64_t *>(offset, state);
+               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1504:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStateSobol32_t * state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1149:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateMRG32k3a_t *state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1526:25: error: conflicting types for 'curand'
+ QUALIFIERS unsigned int curand(curandStateScrambledSobol32_t * state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1504:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateSobol32_t * state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1548:31: error: conflicting types for 'curand'
+ QUALIFIERS unsigned long long curand(curandStateSobol64_t * state)
+                               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1526:25: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned int curand(curandStateScrambledSobol32_t * state)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: error: conflicting types for 'curand'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1548:31: note: previous definition of 'curand' was here
+ QUALIFIERS unsigned long long curand(curandStateSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:84:18: error: conflicting types for '_curand_uniform'
+ QUALIFIERS float _curand_uniform(unsigned long long x)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:69:18: note: previous definition of '_curand_uniform' was here
+ QUALIFIERS float _curand_uniform(unsigned int x)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:96:19: error: conflicting types for '_curand_uniform_double'
+ QUALIFIERS double _curand_uniform_double(unsigned long long x)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:91:19: note: previous definition of '_curand_uniform_double' was here
+ QUALIFIERS double _curand_uniform_double(unsigned int x)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:110:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateTest_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:115:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateTest_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:134:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateXORWOW_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:108:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateTest_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:136:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:155:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateXORWOW_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:113:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateTest_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:158:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     x = curand(state);
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:159:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     y = curand(state);
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:177:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateMRG32k3a_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:134:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateXORWOW_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:197:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateMRG32k3a_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:155:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateXORWOW_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:255:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStatePhilox4_32_10_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:177:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateMRG32k3a_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:257:4: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+    return _curand_uniform(curand(state));
+    ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:290:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateMtgp32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:255:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStatePhilox4_32_10_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:292:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:309:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateMtgp32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:197:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateMRG32k3a_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:311:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:333:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:309:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateMtgp32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:335:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:353:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:290:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateMtgp32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:355:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:376:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:333:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:378:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:394:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateScrambledSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:353:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:396:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:417:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateScrambledSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:376:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:419:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:435:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:394:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateScrambledSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:437:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:455:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateSobol64_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:417:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateScrambledSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: In function 'curand_uniform_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:457:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_uniform_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:473:18: error: conflicting types for 'curand_uniform'
+ QUALIFIERS float curand_uniform(curandStateScrambledSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:435:18: note: previous definition of 'curand_uniform' was here
+ QUALIFIERS float curand_uniform(curandStateSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:493:19: error: conflicting types for 'curand_uniform_double'
+ QUALIFIERS double curand_uniform_double(curandStateScrambledSobol64_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:455:19: note: previous definition of 'curand_uniform_double' was here
+ QUALIFIERS double curand_uniform_double(curandStateSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:67:0,
+                 from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal_static.h:71:25: error: conflicting types for '_curand_normal_icdf'
+ QUALIFIERS_STATIC float _curand_normal_icdf(unsigned long long x)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal_static.h:53:25: note: previous definition of '_curand_normal_icdf' was here
+ QUALIFIERS_STATIC float _curand_normal_icdf(unsigned int x)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal_static.h:108:26: error: conflicting types for '_curand_normal_icdf_double'
+ QUALIFIERS_STATIC double _curand_normal_icdf_double(unsigned long long x)
+                          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal_static.h:90:26: note: previous definition of '_curand_normal_icdf_double' was here
+ QUALIFIERS_STATIC double _curand_normal_icdf_double(unsigned int x)
+                          ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_box_muller_mrg':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:90:5: warning: passing argument 1 of 'curand_uniform' from incompatible pointer type [enabled by default]
+     x = curand_uniform(state);
+     ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:473:18: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMRG32k3a_t *'
+ QUALIFIERS float curand_uniform(curandStateScrambledSobol64_t *state)
+                  ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:91:5: warning: passing argument 1 of 'curand_uniform' from incompatible pointer type [enabled by default]
+     y = curand_uniform(state) * CURAND_2PI;
+     ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:473:18: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMRG32k3a_t *'
+ QUALIFIERS float curand_uniform(curandStateScrambledSobol64_t *state)
+                  ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_box_muller_mrg_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:136:5: warning: passing argument 1 of 'curand_uniform_double' from incompatible pointer type [enabled by default]
+     x = curand_uniform_double(state);
+     ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:493:19: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMRG32k3a_t *'
+ QUALIFIERS double curand_uniform_double(curandStateScrambledSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:137:5: warning: passing argument 1 of 'curand_uniform_double' from incompatible pointer type [enabled by default]
+     y = curand_uniform_double(state) * 2.0;
+     ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1581:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_uniform.h:493:19: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMRG32k3a_t *'
+ QUALIFIERS double curand_uniform_double(curandStateScrambledSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:151:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename R>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:161:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename R>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:177:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename R>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:189:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename R>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:200:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename R>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:314:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:315:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:342:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStatePhilox4_32_10_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:310:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateXORWOW_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:346:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:347:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:375:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateMRG32k3a_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:342:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStatePhilox4_32_10_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal2':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:404:5: warning: implicit declaration of function 'curand_box_muller' [-Wimplicit-function-declaration]
+     return curand_box_muller(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:404:5: error: incompatible types when returning type 'int' but 'float2' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:421:19: error: conflicting types for 'curand_normal2'
+ QUALIFIERS float2 curand_normal2(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:402:19: note: previous definition of 'curand_normal2' was here
+ QUALIFIERS float2 curand_normal2(curandStateXORWOW_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal2':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:423:5: error: incompatible types when returning type 'int' but 'float2' was expected
+     return curand_box_muller(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal4':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:443:5: warning: implicit declaration of function 'curand_box_muller4' [-Wimplicit-function-declaration]
+     return curand_box_muller4(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:443:5: error: incompatible types when returning type 'int' but 'float4' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:463:19: error: conflicting types for 'curand_normal2'
+ QUALIFIERS float2 curand_normal2(curandStateMRG32k3a_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:421:19: note: previous definition of 'curand_normal2' was here
+ QUALIFIERS float2 curand_normal2(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:482:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateMtgp32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:375:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateMRG32k3a_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:484:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:500:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:482:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateMtgp32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:502:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:519:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateScrambledSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:500:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:521:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:538:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:519:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateScrambledSobol32_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:540:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:557:18: error: conflicting types for 'curand_normal'
+ QUALIFIERS float curand_normal(curandStateScrambledSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:538:18: note: previous definition of 'curand_normal' was here
+ QUALIFIERS float curand_normal(curandStateSobol64_t *state)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:582:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x0 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:583:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x1 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:584:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y0 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:585:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y1 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:612:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:578:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateXORWOW_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:643:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateMRG32k3a_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:612:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStatePhilox4_32_10_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal2_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:672:5: warning: implicit declaration of function 'curand_box_muller_double' [-Wimplicit-function-declaration]
+     return curand_box_muller_double(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:672:5: error: incompatible types when returning type 'int' but 'double2' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:690:20: error: conflicting types for 'curand_normal2_double'
+ QUALIFIERS double2 curand_normal2_double(curandStatePhilox4_32_10_t *state)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:670:20: note: previous definition of 'curand_normal2_double' was here
+ QUALIFIERS double2 curand_normal2_double(curandStateXORWOW_t *state)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:738:20: error: conflicting types for 'curand_normal2_double'
+ QUALIFIERS double2 curand_normal2_double(curandStateMRG32k3a_t *state)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:690:20: note: previous definition of 'curand_normal2_double' was here
+ QUALIFIERS double2 curand_normal2_double(curandStatePhilox4_32_10_t *state)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:757:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateMtgp32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:643:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateMRG32k3a_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:759:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:776:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:757:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateMtgp32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:778:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:795:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:776:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:797:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:814:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateSobol64_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:795:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol32_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: In function 'curand_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:816:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_normal_icdf_double(curand(state));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:833:19: error: conflicting types for 'curand_normal_double'
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol64_t *state)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:814:19: note: previous definition of 'curand_normal_double' was here
+ QUALIFIERS double curand_normal_double(curandStateSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:92:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:93:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:124:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStatePhilox4_32_10_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:88:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateXORWOW_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:128:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:129:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal2':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:159:5: error: invalid initializer
+     float2 v = curand_box_muller(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:183:19: error: conflicting types for 'curand_log_normal2'
+ QUALIFIERS float2 curand_log_normal2(curandStatePhilox4_32_10_t *state, float mean, float stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:157:19: note: previous definition of 'curand_log_normal2' was here
+ QUALIFIERS float2 curand_log_normal2(curandStateXORWOW_t *state, float mean, float stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal2':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:185:5: error: invalid initializer
+     float2 v = curand_box_muller(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal4':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:210:5: error: invalid initializer
+     float4 v = curand_box_muller4(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:238:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateMRG32k3a_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:124:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStatePhilox4_32_10_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:268:19: error: conflicting types for 'curand_log_normal2'
+ QUALIFIERS float2 curand_log_normal2(curandStateMRG32k3a_t *state, float mean, float stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:183:19: note: previous definition of 'curand_log_normal2' was here
+ QUALIFIERS float2 curand_log_normal2(curandStatePhilox4_32_10_t *state, float mean, float stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:294:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateMtgp32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:238:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateMRG32k3a_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:296:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return expf(mean + (stddev * _curand_normal_icdf(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:317:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateSobol32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:294:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateMtgp32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:319:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return expf(mean + (stddev * _curand_normal_icdf(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:339:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateScrambledSobol32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:317:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateSobol32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:341:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return expf(mean + (stddev * _curand_normal_icdf(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:362:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateSobol64_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:339:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateScrambledSobol32_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:364:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return expf(mean + (stddev * _curand_normal_icdf(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:385:18: error: conflicting types for 'curand_log_normal'
+ QUALIFIERS float curand_log_normal(curandStateScrambledSobol64_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:362:18: note: previous definition of 'curand_log_normal' was here
+ QUALIFIERS float curand_log_normal(curandStateSobol64_t *state, float mean, float stddev)
+                  ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:415:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x0 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:416:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         x1 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:417:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y0 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:418:9: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+         y1 = curand(state);
+         ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:449:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStatePhilox4_32_10_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:411:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateXORWOW_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal2_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:484:5: error: invalid initializer
+     double2 v = curand_box_muller_double(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:508:20: error: conflicting types for 'curand_log_normal2_double'
+ QUALIFIERS double2 curand_log_normal2_double(curandStatePhilox4_32_10_t *state, double mean, double stddev)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:482:20: note: previous definition of 'curand_log_normal2_double' was here
+ QUALIFIERS double2 curand_log_normal2_double(curandStateXORWOW_t *state, double mean, double stddev)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal2_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:510:5: warning: implicit declaration of function 'curand_box_muller2_double' [-Wimplicit-function-declaration]
+     double2 v = curand_box_muller2_double(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:510:5: error: invalid initializer
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal4_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:518:5: warning: implicit declaration of function 'curand_box_muller4_double' [-Wimplicit-function-declaration]
+     double4 v = curand_box_muller4_double(state);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:518:5: error: invalid initializer
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:546:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateMRG32k3a_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:449:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStatePhilox4_32_10_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:576:20: error: conflicting types for 'curand_log_normal2_double'
+ QUALIFIERS double2 curand_log_normal2_double(curandStateMRG32k3a_t *state, double mean, double stddev)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:508:20: note: previous definition of 'curand_log_normal2_double' was here
+ QUALIFIERS double2 curand_log_normal2_double(curandStatePhilox4_32_10_t *state, double mean, double stddev)
+                    ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:602:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateMtgp32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:546:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateMRG32k3a_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:604:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return exp(mean + (stddev * _curand_normal_icdf_double(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:625:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateSobol32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:602:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateMtgp32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:627:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return exp(mean + (stddev * _curand_normal_icdf_double(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:648:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateScrambledSobol32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:625:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateSobol32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:650:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return exp(mean + (stddev * _curand_normal_icdf_double(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:670:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateSobol64_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:648:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateScrambledSobol32_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: In function 'curand_log_normal_double':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:672:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return exp(mean + (stddev * _curand_normal_icdf_double(curand(state))));
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1583:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:692:19: error: conflicting types for 'curand_log_normal_double'
+ QUALIFIERS double curand_log_normal_double(curandStateScrambledSobol64_t *state, double mean, double stddev)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_lognormal.h:670:19: note: previous definition of 'curand_log_normal_double' was here
+ QUALIFIERS double curand_log_normal_double(curandStateSobol64_t *state, double mean, double stddev)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:244:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:257:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:288:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:309:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:365:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:371:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:378:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:400:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:416:19: error: conflicting types for '_curand_uniform_double_excluding_one'
+ QUALIFIERS double _curand_uniform_double_excluding_one(unsigned long long x)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:409:19: note: previous definition of '_curand_uniform_double_excluding_one' was here
+ QUALIFIERS double _curand_uniform_double_excluding_one(unsigned int x)
+                   ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:422:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:452:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:471:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:534:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:542:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:548:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:554:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:585:9: warning: implicit declaration of function 'curand_poisson_knuth' [-Wimplicit-function-declaration]
+         return curand_poisson_knuth(state, (float)lambda);
+         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:587:9: warning: passing argument 1 of 'curand_normal_double' from incompatible pointer type [enabled by default]
+         return (unsigned int)((sqrt(lambda) * curand_normal_double(state)) + lambda + 0.5); //Round to nearest
+         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:833:19: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateXORWOW_t *'
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:588:5: warning: implicit declaration of function 'curand_poisson_gammainc' [-Wimplicit-function-declaration]
+     return curand_poisson_gammainc(state, (float)lambda);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:604:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStatePhilox4_32_10_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:582:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateXORWOW_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:609:9: warning: passing argument 1 of 'curand_normal_double' from incompatible pointer type [enabled by default]
+         return (unsigned int)((sqrt(lambda) * curand_normal_double(state)) + lambda + 0.5); //Round to nearest
+         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:833:19: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStatePhilox4_32_10_t *'
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson4':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:630:9: warning: implicit declaration of function 'curand_poisson_knuth4' [-Wimplicit-function-declaration]
+         return curand_poisson_knuth4(state, (float)lambda);
+         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:630:9: error: incompatible types when returning type 'int' but 'uint4' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:639:5: warning: implicit declaration of function 'curand_poisson_gammainc4' [-Wimplicit-function-declaration]
+     return curand_poisson_gammainc4(state, (float)lambda);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:639:5: error: incompatible types when returning type 'int' but 'uint4' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:657:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateMRG32k3a_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:604:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStatePhilox4_32_10_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:662:9: warning: passing argument 1 of 'curand_normal_double' from incompatible pointer type [enabled by default]
+         return (unsigned int)((sqrt(lambda) * curand_normal_double(state)) + lambda + 0.5); //Round to nearest
+         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1582:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_normal.h:833:19: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMRG32k3a_t *'
+ QUALIFIERS double curand_normal_double(curandStateScrambledSobol64_t *state)
+                   ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:678:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateMtgp32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:657:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateMRG32k3a_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:680:5: warning: implicit declaration of function '_curand_poisson' [-Wimplicit-function-declaration]
+     return _curand_poisson(curand(state), lambda);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:680:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateMtgp32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:696:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateSobol32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:678:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateMtgp32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:698:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_poisson(curand(state), lambda);
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:713:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateScrambledSobol32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:696:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateSobol32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:715:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_poisson(curand(state), lambda);
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateScrambledSobol32_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:730:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateSobol64_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:713:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateScrambledSobol32_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: In function 'curand_poisson':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:732:5: warning: passing argument 1 of 'curand' from incompatible pointer type [enabled by default]
+     return _curand_poisson(curand(state), lambda);
+     ^
+In file included from src/gpu_data.h:5:0,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1570:31: note: expected 'struct curandStateScrambledSobol64_t *' but argument is of type 'struct curandStateSobol64_t *'
+ QUALIFIERS unsigned long long curand(curandStateScrambledSobol64_t * state)
+                               ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1584:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:747:25: error: conflicting types for 'curand_poisson'
+ QUALIFIERS unsigned int curand_poisson(curandStateScrambledSobol64_t *state, double lambda)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_poisson.h:730:25: note: previous definition of 'curand_poisson' was here
+ QUALIFIERS unsigned int curand_poisson(curandStateSobol64_t *state, double lambda)
+                         ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1585:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:69:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename T>
+          ^
+In file included from /opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_kernel.h:1585:0,
+                 from src/gpu_data.h:5,
+                 from src/main.c:13:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:78:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:86:10: error: expected '=', ',', ';', 'asm' or '__attribute__' before '<' token
+ template <typename STATE>
+          ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h: In function 'curand_discrete':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:115:5: warning: implicit declaration of function 'curand__discrete' [-Wimplicit-function-declaration]
+     return curand__discrete(state, discrete_distribution);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:130:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStatePhilox4_32_10_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:113:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateXORWOW_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h: In function 'curand_discrete4':
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:149:5: warning: implicit declaration of function 'curand__discrete4' [-Wimplicit-function-declaration]
+     return curand__discrete4(state, discrete_distribution);
+     ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:149:5: error: incompatible types when returning type 'int' but 'uint4' was expected
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h: At top level:
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:163:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateMRG32k3a_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:130:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStatePhilox4_32_10_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:180:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateMtgp32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:163:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateMRG32k3a_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:197:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateSobol32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:180:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateMtgp32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:214:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateScrambledSobol32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:197:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateSobol32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:231:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateSobol64_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:214:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateScrambledSobol32_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:248:25: error: conflicting types for 'curand_discrete'
+ QUALIFIERS unsigned int curand_discrete(curandStateScrambledSobol64_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+/opt/ohpc/pub/apps/cuda/11.8/Linux_x86_64/22.11/math_libs/11.8/include/curand_discrete2.h:231:25: note: previous definition of 'curand_discrete' was here
+ QUALIFIERS unsigned int curand_discrete(curandStateSobol64_t *state, curandDiscreteDistribution_t discrete_distribution)
+                         ^
+In file included from src/main.c:13:0:
+src/gpu_data.h:22:3: error: conflicting types for 'DeviceSoA'
+ } DeviceSoA;
+   ^
+In file included from src/gpu_data.h:7:0,
+                 from src/main.c:13:
+src/gpu_interface.h:7:26: note: previous declaration of 'DeviceSoA' was here
+ typedef struct DeviceSoA DeviceSoA;
+                          ^
+In file included from src/main.c:15:0:
+src/geometry_bake.h:18:3: error: conflicting types for 'BakedGeometry'
+ } BakedGeometry;
+   ^
+In file included from src/gpu_data.h:7:0,
+                 from src/main.c:13:
+src/gpu_interface.h:6:30: note: previous declaration of 'BakedGeometry' was here
+ typedef struct BakedGeometry BakedGeometry;
+                              ^
+src/main.c: In function 'fsync_file':
+src/main.c:47:5: warning: implicit declaration of function 'fileno' [-Wimplicit-function-declaration]
+     int fd = fileno(f);
+     ^
+src/main.c: In function 'main':
+src/main.c:172:5: warning: passing argument 1 of 'gpu_upload_geometry_from_baked' from incompatible pointer type [enabled by default]
+     gpu_upload_geometry_from_baked(&baked);
+     ^
+In file included from src/gpu_data.h:7:0,
+                 from src/main.c:13:
+src/gpu_interface.h:46:6: note: expected 'const struct BakedGeometry *' but argument is of type 'struct BakedGeometry *'
+ void gpu_upload_geometry_from_baked(const BakedGeometry* baked);
+      ^
+src/main.c:226:9: warning: passing argument 1 of 'gpu_launch_anneal' from incompatible pointer type [enabled by default]
+         gpu_launch_anneal(&soa, N_CHAINS, N_POLYS, current_box, STEPS_PER_LAUNCH);
+         ^
+In file included from src/gpu_data.h:7:0,
+                 from src/main.c:13:
+src/gpu_interface.h:36:6: note: expected 'struct DeviceSoA *' but argument is of type 'struct DeviceSoA *'
+ void gpu_launch_anneal(
+      ^
+make: *** [src/main.o] Error 1
