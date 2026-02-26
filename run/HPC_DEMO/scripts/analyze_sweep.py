@@ -92,7 +92,9 @@ class RunRecord:
 
 
 HEADER_RE = re.compile(
-    r"#\s*prefix=(?P<prefix>\S+)\s+run_id=(?P<run_id>\d+)\s+seed=(?P<seed>\d+)\s+"
+    r"#\s*prefix=(?P<prefix>\S+)\s+"
+    r"(?:method=\S+\s+)?"                   # optional method= field
+    r"run_id=(?P<run_id>\d+)\s+seed=(?P<seed>\d+)\s+"
     r"L=(?P<L>[-+eE0-9\.]+)\s+best_feas=(?P<best_feas>[-+eE0-9\.]+)\s+N=(?P<N>\d+)"
 )
 
