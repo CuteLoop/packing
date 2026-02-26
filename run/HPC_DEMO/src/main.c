@@ -24,6 +24,7 @@
 #include "../include/logger.h"
 #include "../include/bisection.h"
 #include "../include/methods.h"
+#include "../include/polish.h"
 #include <omp.h>
 
 // --- Global Stop Flag for Signal Handling ---
@@ -157,7 +158,8 @@ void usage() {
 static void usage_study(void) {
     fprintf(stderr, "Study mode usage:\n");
     fprintf(stderr, "  ./bin/solver --study --method {ms,erms,pt} --R <int> --N <int> ");
-    fprintf(stderr, "--time_budget_sec <sec> --seed <u64> --run_id <u64> --out_prefix <str> [--save_best]\n");
+    fprintf(stderr, "--time_budget_sec <sec> --seed <u64> --run_id <u64> --out_prefix <str>\n");
+    fprintf(stderr, "  [--mode graph|hero] [--save_best]\n");
 }
 
 static void ensure_dir_recursive(const char *path) {
@@ -195,6 +197,7 @@ static int run_study_mode(int argc, char **argv) {
     cfg.weights.lambda_ov = 1.0;
     cfg.weights.mu_out = 1.0;
     int save_best = 0;
+    char mode[16] = "graph";
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--study") == 0) {
@@ -217,6 +220,8 @@ static int run_study_mode(int argc, char **argv) {
             cfg.eps_feas = atof(argv[++i]);
         } else if (strcmp(argv[i], "--save_best") == 0) {
             save_best = 1;
+        } else if (strcmp(argv[i], "--mode") == 0 && i + 1 < argc) {
+            strncpy(mode, argv[++i], sizeof(mode) - 1);
         }
     }
 
@@ -243,18 +248,53 @@ static int run_study_mode(int argc, char **argv) {
 
     omp_set_num_threads(cfg.R);
 
-    BisectionResult result = bisection_run(&cfg, runner);
+    if (strcmp(mode, "hero") == 0) {
+        /* Hero mode: bisection first, then polish best L */
+        BisectionResult result = bisection_run(&cfg, runner);
 
-    printf("Bisection complete: probes=%d feasible=%d L_best=%.6f bracket=[%.6f, %.6f]\n",
-           result.probes_done, result.feasible_found,
-           result.feasible_found ? result.L_best : -1.0,
-           result.L_lo, result.L_hi);
+        printf("Bisection phase: probes=%d feasible=%d L_best=%.6f bracket=[%.6f, %.6f]\n",
+               result.probes_done, result.feasible_found,
+               result.feasible_found ? result.L_best : -1.0,
+               result.L_lo, result.L_hi);
 
-    if (save_best && result.feasible_found) {
-        write_best_csv_study(&cfg, &result.best_state, result.L_best);
-        write_best_svg_study(&cfg, &result.best_state, result.L_best);
-        printf("Best SVG: %s_%s_N%03d_s%llu_best_state.svg\n",
-               cfg.out_prefix, cfg.method, cfg.N, (unsigned long long)cfg.seed);
+        if (result.feasible_found) {
+            double remaining = cfg.time_budget_sec - (result.probes_done * 10.0);
+            if (remaining < 30.0) remaining = 30.0;
+
+            printf("Polish phase: L_best=%.6f budget=%.1fs\n", result.L_best, remaining);
+
+            SliceResult polish_res;
+            runner_polish(&cfg, result.L_best, remaining,
+                          600.0, 1.0,
+                          1, &result.best_state, &polish_res);
+
+            printf("Hero complete: feasible=%d energy=%.6e elapsed=%.1fs\n",
+                   polish_res.feasible, polish_res.min_energy, polish_res.slice_used_sec);
+
+            if (save_best && polish_res.has_state) {
+                write_best_csv_study(&cfg, &polish_res.best_state, result.L_best);
+                write_best_svg_study(&cfg, &polish_res.best_state, result.L_best);
+                printf("Best SVG: %s_%s_N%03d_s%llu_best_state.svg\n",
+                       cfg.out_prefix, cfg.method, cfg.N, (unsigned long long)cfg.seed);
+            }
+        } else {
+            printf("Hero mode: bisection found no feasible solution; skipping polish.\n");
+        }
+    } else {
+        /* Graph mode: bisection only */
+        BisectionResult result = bisection_run(&cfg, runner);
+
+        printf("Bisection complete: probes=%d feasible=%d L_best=%.6f bracket=[%.6f, %.6f]\n",
+               result.probes_done, result.feasible_found,
+               result.feasible_found ? result.L_best : -1.0,
+               result.L_lo, result.L_hi);
+
+        if (save_best && result.feasible_found) {
+            write_best_csv_study(&cfg, &result.best_state, result.L_best);
+            write_best_svg_study(&cfg, &result.best_state, result.L_best);
+            printf("Best SVG: %s_%s_N%03d_s%llu_best_state.svg\n",
+                   cfg.out_prefix, cfg.method, cfg.N, (unsigned long long)cfg.seed);
+        }
     }
 
     return 0;
