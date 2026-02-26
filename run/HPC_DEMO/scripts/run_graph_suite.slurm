@@ -1,18 +1,29 @@
 #!/bin/bash
 #SBATCH --job-name=pack_graph
-#SBATCH --time=04:00:00
+#SBATCH --account=ece569
+#SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=8G
+#SBATCH --time=04:00:00
 #SBATCH --output=logs/graph_%j.out
 #SBATCH --error=logs/graph_%j.err
 
 # Phase 6 — Graph suite: 2 seeds × 3 methods × N∈{5,10,20,50,100}
 # Each seed pair runs concurrently (10 threads each).
 
+# Exit immediately if a command exits with a non-zero status
 set -euo pipefail
+
+# Ensure we run from the directory where the job was submitted
+cd $SLURM_SUBMIT_DIR
+
+# Create output directories
 mkdir -p out logs
+
+# Set OpenMP thread count
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 SOLVER=./bin/solver
 METHODS="ms erms pt"

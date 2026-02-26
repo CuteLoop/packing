@@ -1,21 +1,29 @@
 #!/bin/bash
 #SBATCH --job-name=pack_dry_run
-#SBATCH --time=00:05:00
+#SBATCH --account=ece569
+#SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=4G
-#SBATCH --partition=standard
+#SBATCH --time=00:05:00
 #SBATCH --output=logs/dry_run_pt_%j.out
 #SBATCH --error=logs/dry_run_pt_%j.err
 
 # Phase 6.a — 5-minute dry run: PT method, N=20, R=20
 # Designed for backfill scheduling under heavy cluster load.
 
+# Exit immediately if a command exits with a non-zero status
 set -euo pipefail
+
+# Ensure we run from the directory where the job was submitted
+cd $SLURM_SUBMIT_DIR
+
+# Create output directories
 mkdir -p logs out
 
-export OMP_NUM_THREADS=20
+# Set OpenMP thread count
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 N=20
 R=20
