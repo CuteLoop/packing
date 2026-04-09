@@ -1,0 +1,426 @@
+\chapter{Simulated Annealing and Its Parallel Variants}
+
+The energy-based formulation of Chapter~1 reduces polygon packing to
+minimizing a highly non-convex function $E(\conf; L)$ over
+$\mathcal{C} = \mathbb{R}^{2N} \times [0, 2\pi)^N$.
+This chapter develops the stochastic optimization machinery used
+to explore that landscape.
+We begin by establishing the common probabilistic target, then
+derive the base Markov chain dynamics and the three parallel coordination
+strategies---MS, ER-MS, and PT---as distinct approximations to sampling
+from that target.
+
+% ─────────────────────────────────────────────────────────────────
+\section{The Common Probabilistic Target}
+% ─────────────────────────────────────────────────────────────────
+
+All three methods studied in this work can be understood as strategies for
+approximating samples from the \emph{Gibbs measure} at temperature $T > 0$:
+\[
+  \pi_T(\conf) \;=\; \frac{1}{Z(T)}\exp\!\left(-\frac{E(\conf;L)}{T}\right),
+  \qquad
+  Z(T) = \int_{\mathcal{C}} e^{-E(\conf;L)/T}\,d\conf.
+\]
+As $T \to 0$, $\pi_T$ concentrates on the global minimizers of $E$.
+Feasible configurations correspond to zero-energy states, so finding a
+feasible packing is equivalent to sampling from $\pi_T$ in the low-temperature
+limit.
+
+The methods differ in how they allocate $R$ parallel workers to approximate
+this target:
+\begin{itemize}
+  \item \textbf{MS} draws $R$ independent samples from separate realizations
+        of the annealing process.
+  \item \textbf{ER-MS} couples workers via a periodic selection--mutation
+        operator, forming an interacting particle system that biases mass
+        toward low-energy regions.
+  \item \textbf{PT} couples $R$ chains thermodynamically via swap moves,
+        targeting the \emph{joint} Gibbs distribution over the replica ensemble.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Base Markov Chain Dynamics}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Metropolis--Hastings Kernel}
+
+Given a configuration $\conf_k$ at step $k$, a candidate $\conf'$ is drawn
+from a symmetric Gaussian proposal kernel $q(\,\cdot \mid \conf_k)$ and
+accepted with probability
+\[
+  \alpha(\conf_k, \conf')
+  \;=\; \min\!\left(1,\; e^{-\Delta E / T_k}\right),
+  \qquad
+  \Delta E = E(\conf'; L) - E(\conf_k; L).
+\]
+Symmetry of $q$ ensures this satisfies detailed balance with respect to
+$\pi_{T_k}$. The resulting transition kernel is
+\[
+  P_k(\conf \to d\conf')
+  = q(\conf' \mid \conf)\,\alpha(\conf, \conf')\,d\conf'
+  + r(\conf)\,\mathbf{1}_{\conf}(d\conf'),
+\]
+where $r(\conf) = 1 - \int q(\conf'\mid\conf)\,\alpha(\conf,\conf')\,d\conf'$
+is the rejection probability.
+
+\paragraph{Proposal structure.}
+At each step, a polygon index $i \sim \mathrm{Uniform}\{1,\dots,N\}$ is
+selected and a joint positional and rotational perturbation is applied:
+\[
+  x_i' = x_i + \delta_x, \quad
+  y_i' = y_i + \delta_y, \quad
+  \theta_i' = \theta_i + \delta_\theta,
+\]
+with $(\delta_x, \delta_y)^\top \sim \mathcal{N}(\mathbf{0},
+\sigma_{\mathrm{pos}}^2 I_2)$ and
+$\delta_\theta \sim \mathcal{N}(0, \sigma_\theta^2)$, drawn independently.
+
+\subsection{Cooling Schedule and Mixing}
+
+We use a \emph{geometric} cooling schedule:
+\[
+  T_k = T_{\max}\,\rho^k,
+  \qquad
+  \rho = \left(\frac{T_{\min}}{T_{\max}}\right)^{1/K},
+\]
+where $K$ is the total number of steps in a bisection probe.
+The geometric schedule is characterized by a constant multiplicative
+temperature reduction $\rho$ per step, which gives equal thermal exposure
+at each decade of energy: the number of steps spent in any interval
+$[cT, T]$ is $-\log c / \log(1/\rho)$, independent of the absolute
+temperature level.
+
+The theoretically sufficient condition for convergence to the global minimum
+requires logarithmic cooling $T_k = c / \log(1 + k)$ for a constant $c$
+exceeding the depth of the deepest local energy barrier~\cite{Hajek1988}.
+Such schedules are computationally infeasible for the problem sizes considered
+here; the geometric schedule instead prioritizes practical convergence within
+a fixed computational budget, with $T_{\min}$ and $T_{\max}$ fixed by
+pilot calibration (Section~\ref{sec:pt-pilot}).
+
+\subsection{Integration with Bisection}
+
+Each method operates within an outer bisection loop over the container
+side length $L$. For a fixed bracket $[L_{\mathrm{lo}}, L_{\mathrm{hi}}]$,
+a probe evaluates the midpoint $L = (L_{\mathrm{lo}} + L_{\mathrm{hi}})/2$
+by running $K$ steps of the SA-based search.
+If a feasible configuration is found, the bracket contracts:
+$L_{\mathrm{hi}} \leftarrow L$; otherwise $L_{\mathrm{lo}} \leftarrow L$.
+The SA energy function $E(\conf; L)$ is therefore re-evaluated at a
+different $L$ on each bisection step, and the Gibbs target $\pi_T$
+changes accordingly.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Method A: Multi-Start Simulated Annealing (MS)}
+\label{sec:ms}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Definition}
+
+MS instantiates $R$ independent Markov chains, each evolving under its
+own copy of the base SA kernel:
+\[
+  \conf_k^{(r)} \;\xrightarrow{P_k,\, T_k}\; \conf_{k+1}^{(r)},
+  \qquad r = 1, \dots, R.
+\]
+Workers share no state during a probe. Seeds are generated deterministically as
+\[
+  s_r = \mathrm{splitmix64}\!\bigl(
+    g \oplus \mathrm{hash}(N, \texttt{run\_id}, \texttt{probe\_idx}, r)
+  \bigr),
+\]
+where $g$ is the global seed, ensuring exact reproducibility.
+
+\subsection{Probabilistic Analysis}
+
+Let $p$ denote the probability that a single SA chain finds a feasible
+configuration within the allotted probe time $\tau$.
+The probability that at least one of $R$ independent workers succeeds is
+\[
+  P_{\mathrm{success}} = 1 - (1-p)^R.
+\]
+For small $p$, this grows as $Rp$ to first order, so $R$ workers provide
+a linear improvement in success probability at linear cost.
+More precisely, if the first-success time for a single chain is
+$\mathrm{Geometric}(p)$-distributed with mean $1/p$, then the minimum
+across $R$ independent chains has mean $1/(Rp)$: the expected time to
+first feasibility scales as $1/R$.
+
+\subsection{Limitations}
+
+The independence of MS chains is both its computational strength
+(zero communication overhead) and its fundamental weakness.
+Workers cannot exploit configurations discovered by their siblings,
+leading to redundant exploration of the same basins.
+In highly multimodal landscapes with narrow feasible regions, this
+redundancy becomes the dominant cost.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Method B: Elite-Resample Multi-Start (ER-MS)}
+\label{sec:erms}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Motivation and Interpretation}
+
+ER-MS augments MS by introducing a periodic selection--mutation operator
+that concentrates the worker population toward low-energy regions.
+Viewed abstractly, the $R$ workers form an \emph{interacting particle system}
+whose empirical distribution
+\[
+  \mu_k^R = \frac{1}{R}\sum_{r=1}^R \delta_{\conf_k^{(r)}}
+\]
+is driven toward $\pi_T$ by alternating between independent SA evolution
+and population-level reweighting. This mirrors the structure of
+Sequential Monte Carlo (SMC) samplers, where a population of weighted
+particles is evolved and periodically resampled.
+
+\subsection{Resampling Operator}
+
+A resampling event is triggered every
+$K_{\mathrm{resample}} = 200N$ MH steps.
+Workers are ranked by energy and the elite pool is defined as the top
+\[
+  k' = \lceil 0.25 R \rceil
+\]
+workers. Elite workers are preserved unchanged. Each non-elite worker $r$
+is replaced by a perturbed copy of a uniformly drawn elite $r^*$:
+\[
+  \conf^{(r)} \;\leftarrow\; \conf^{(r^*)} + \bm{\xi}_r,
+  \quad
+  r^* \sim \mathrm{Uniform}\{1, \dots, k'\}.
+\]
+
+\subsection{Perturbation Model}
+
+The perturbation $\bm{\xi}_r$ is drawn independently for spatial and
+angular components.
+For polygon $i$, the displacement and rotation noise are
+\[
+  (\delta x_i, \delta y_i)^\top \sim \mathcal{N}\!\left(\mathbf{0},\,
+    \sigma_{\mathrm{pos}}(f)^2\, I_2\right),
+  \qquad
+  \delta\theta_i \sim \mathcal{N}\!\left(0,\, \sigma_\theta(f)^2\right),
+\]
+where the standard deviations decay linearly with the elapsed fraction
+$f \in [0,1]$ of the current probe:
+\begin{align}
+  \sigma_{\mathrm{pos}}(f) &= (0.02 - 0.015\,f)\,L, \\
+  \sigma_\theta(f) &= 5^\circ - 4^\circ f.
+\end{align}
+The full per-polygon perturbation covariance is therefore the block-diagonal matrix
+\[
+  \Sigma(f) = \mathrm{diag}\!\bigl(
+    \underbrace{\sigma_{\mathrm{pos}}^2, \sigma_{\mathrm{pos}}^2,
+    \sigma_\theta^2}_{\text{polygon }1},\,
+    \dots,\,
+    \underbrace{\sigma_{\mathrm{pos}}^2, \sigma_{\mathrm{pos}}^2,
+    \sigma_\theta^2}_{\text{polygon }N}
+  \bigr).
+\]
+Large early-probe noise allows workers to escape elite basins
+and explore new regions; decaying late-probe noise concentrates
+refinement near the current best solution.
+
+\subsection{Anti-Collapse Mechanism}
+
+Population collapse---all workers converging to the same local minimum---
+reduces ER-MS to a single chain and eliminates the benefit of
+parallelism. Collapse is detected via the normalized energy spread
+\[
+  \delta_{\mathrm{rel}}
+  = \frac{E_{\max} - E_{\min}}{\max\!\left(1,\, \lvert E_{\mathrm{mean}}\rvert\right)}
+  < 10^{-6},
+\]
+evaluated at each resampling event.
+If this condition holds for two consecutive resamples, the perturbation
+scales are doubled for the immediately following resample cycle:
+\[
+  \sigma_{\mathrm{pos}} \leftarrow 2\,\sigma_{\mathrm{pos}}(f), \qquad
+  \sigma_\theta \leftarrow 2\,\sigma_\theta(f).
+\]
+
+\subsection{Relationship to SMC}
+
+In standard SMC, particles carry importance weights and resampling is
+performed proportional to those weights.
+ER-MS replaces importance weights with a hard rank cutoff (top $k'$),
+which is computationally cheaper but introduces selection bias:
+the retained configurations are not guaranteed to be representative
+samples from $\pi_T$.
+The mutation step (Gaussian perturbation) plays the role of the MCMC
+rejuvenation kernel in SMC, restoring diversity lost to selection.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Method C: Parallel Tempering (PT)}
+\label{sec:pt}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Replica Ensemble and Joint Distribution}
+
+PT maintains $R$ replicas at a fixed geometric temperature ladder:
+\[
+  T_r = T_{\min}\!\left(\frac{T_{\max}}{T_{\min}}\right)^{(r-1)/(R-1)},
+  \qquad r = 1, \dots, R,
+\]
+so that $T_1 < T_2 < \cdots < T_R$.
+The extended system targets the \emph{joint} Gibbs distribution
+\[
+  \Pi\!\left(\conf^{(1)}, \dots, \conf^{(R)}\right)
+  = \prod_{r=1}^R \pi_{T_r}\!\left(\conf^{(r)}\right).
+\]
+The geometric ladder spacing gives a constant temperature ratio between
+adjacent rungs, which empirically yields uniform swap acceptance rates
+across the ladder.
+
+\subsection{Within-Replica Dynamics}
+
+Between swap events, each replica evolves independently under its own
+MH kernel targeting $\pi_{T_r}$:
+\[
+  \conf_k^{(r)} \;\xrightarrow{P_k^{(r)},\, T_r}\; \conf_{k+1}^{(r)}.
+\]
+
+\subsection{Replica Exchange}
+
+Every $K_{\mathrm{swap}} = 200N$ MH steps, an exchange is proposed
+between each adjacent pair $(r, r+1)$.
+The swap acceptance probability is
+\[
+  \alpha_{\mathrm{swap}}^{(r,r+1)}
+  = \min\!\left(1,\;
+    \exp\!\left[
+      \left(\frac{1}{T_r} - \frac{1}{T_{r+1}}\right)
+      \Bigl(E(\conf^{(r+1)};L) - E(\conf^{(r)};L)\Bigr)
+    \right]
+  \right).
+\]
+
+\begin{proposition}[Detailed Balance for Replica Exchange]
+The swap acceptance probability $\alpha_{\mathrm{swap}}^{(r,r+1)}$
+satisfies detailed balance with respect to the joint distribution $\Pi$.
+\end{proposition}
+
+\begin{proof}
+Let $\bm{\conf}$ and $\bm{\conf}'$ be the ensemble states before and after
+swapping replicas $r$ and $r+1$. The ratio of joint probabilities is
+\begin{align*}
+  \frac{\Pi(\bm{\conf}')}{\Pi(\bm{\conf})}
+  &= \frac{\pi_{T_r}(\conf^{(r+1)})\,\pi_{T_{r+1}}(\conf^{(r)})}
+         {\pi_{T_r}(\conf^{(r)})\,\pi_{T_{r+1}}(\conf^{(r+1)})}
+   = \exp\!\left[
+     \left(\frac{1}{T_r} - \frac{1}{T_{r+1}}\right)
+     \left(E^{(r+1)} - E^{(r)}\right)
+   \right],
+\end{align*}
+where $E^{(r)} = E(\conf^{(r)};L)$.
+The Metropolis acceptance ratio $\alpha_{\mathrm{swap}}^{(r,r+1)} =
+\min(1, \Pi(\bm{\conf}')/\Pi(\bm{\conf}))$ then satisfies
+$\Pi(\bm{\conf})\,\alpha_{\mathrm{swap}}^{(r,r+1)}
+= \Pi(\bm{\conf}')\,\alpha_{\mathrm{swap}}^{(r+1,r)}$
+by the standard Metropolis argument.
+\end{proof}
+
+\subsection{Mechanism: Temperature-Assisted Basin Escape}
+
+High-temperature replicas flatten the effective energy landscape,
+allowing them to traverse barriers that would trap a cold chain.
+When a swap carries a favorable configuration from replica $r+1$ to
+replica $r$, that configuration begins cold-chain refinement from a
+point already near a low-energy basin.
+This \emph{temperature-assisted diffusion} is the core reason PT
+outperforms MS on landscapes with high, narrow barriers separating
+deep basins.
+
+\subsection{Early Stopping Criterion}
+
+Because our goal is feasibility rather than equilibrium sampling,
+a probe terminates only when the \emph{coldest} replica ($r = 1$)
+reaches $E(\conf^{(1)};L) \le \varepsilon_{\mathrm{feas}}$.
+Feasible configurations visiting higher-temperature replicas are
+not accepted as solutions unless they propagate to replica 1 via
+an accepted swap chain.
+
+\subsection{Pilot Calibration}
+\label{sec:pt-pilot}
+
+The temperature bounds $T_{\min}$ and $T_{\max}$ are set by the
+following pilot procedure:
+\begin{enumerate}
+  \item Run a 10-minute pilot at $N=100$, $R=10$ with an initial
+        temperature ladder.
+  \item Compute the empirical swap acceptance rate $\hat{\alpha}_r$ at
+        each adjacent pair $(r, r+1)$.
+  \item If $\hat{\alpha}_r \notin [0.15,\, 0.60]$ for any rung,
+        multiply $T_{\max}$ or $T_{\min}$ by a factor of 2 and repeat.
+  \item Lock the calibrated values. Run a 5-minute sanity pilot at
+        $N=200$ to confirm validity at larger system size.
+\end{enumerate}
+The target window $[0.15, 0.60]$ is a standard empirical criterion:
+below 0.15 the cold chain mixes too slowly; above 0.60 adjacent
+replicas are too similar for exchange to provide useful information flow.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Energy Landscape Interpretation}
+% ─────────────────────────────────────────────────────────────────
+
+The relative performance of the three methods is determined by the
+structure of the energy landscape $E(\cdot; L)$.
+Three geometric features are particularly relevant:
+
+\begin{itemize}
+  \item \textbf{Local minima.} Configurations $\conf^*$ satisfying
+        $\nabla E = 0$ with $E(\conf^*) > 0$ are jammed states: partially
+        overlapping packings with no locally improving move.
+  \item \textbf{Energy barriers.} A barrier of height $\Delta$ between
+        two basins requires the chain to traverse a region of energy at
+        least $\Delta$ above the current state. Under the Metropolis rule,
+        the probability of acceptance at temperature $T$ scales as
+        $e^{-\Delta/T}$, so barriers suppress transitions exponentially
+        as $T \to 0$.
+  \item \textbf{Basins of attraction.} Each local minimum is surrounded
+        by a basin of configurations from which gradient-following
+        dynamics converge to it. Wide, shallow basins are easily escaped
+        at moderate temperatures; deep, narrow feasible basins require
+        low temperatures to be refined once entered.
+\end{itemize}
+
+MS relies on independent discovery of distinct basins; it does not
+improve mixing within any single chain.
+ER-MS concentrates the worker population in the lowest-energy basins
+discovered so far, amplifying exploitation at the cost of diversity.
+PT enables direct inter-basin transitions by lifting configurations to
+temperatures where barriers are effectively invisible, then returning
+them to low temperature for refinement.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Summary}
+% ─────────────────────────────────────────────────────────────────
+
+Table~\ref{tab:methods} summarizes the key structural properties of
+the three strategies.
+
+\begin{table}[h]
+\centering
+\caption{Structural comparison of parallel SA variants.}
+\label{tab:methods}
+\begin{tabular}{llll}
+\toprule
+Property & MS & ER-MS & PT \\
+\midrule
+Probabilistic target    & $\pi_T$ (each chain)        & Biased toward low $E$           & $\prod_r \pi_{T_r}$ \\
+Inter-worker comm.      & None                        & Periodic (resample)             & Periodic (swap)     \\
+Comm.\ trigger          & ---                         & Every $200N$ steps              & Every $200N$ steps  \\
+Temperature structure   & Shared schedule             & Shared schedule                 & Fixed ladder        \\
+Elite/cold bias         & None                        & Top $\lceil 0.25R\rceil$        & Cold replica only   \\
+Barrier crossing        & Weak (single-chain)         & Moderate (population spread)    & Strong (PT diffusion) \\
+Early stop condition    & Any worker feasible         & Any worker feasible             & Cold replica feasible \\
+HPC pattern             & Embarrassingly parallel     & Barrier + collective sort       & Neighbor communication \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The three methods represent a progression from zero coupling (MS)
+through unidirectional information flow driven by energy ranking (ER-MS)
+to bidirectional thermodynamic coupling governed by detailed balance (PT).
+Chapter~3 defines the energy function $E(\conf; L)$ explicitly and
+develops the geometric algorithms required to evaluate it.
