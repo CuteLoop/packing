@@ -232,7 +232,7 @@ If **any replica** becomes feasible at any time:
 
 ---
 
-## Phase 5 — Standardized polish procedure (MS-polish + Stochastic Shave)
+## Phase 5 — Standardized polish procedure (MS-polish + Stochastic Shave) (DONE ✅)
 
 **Goal:** produce hero-quality packing without blowing it up.
 
@@ -259,38 +259,48 @@ If **any replica** becomes feasible at any time:
 
 ---
 
-## Phase 6 — Orchestration + analysis-first
+## Phase 6 — Orchestration + analysis-first (DONE ✅)
 
 **Goal:** avoid wasting 4-hour runs.
 
-### Tasks
+### Completed
 
-1. Extend CLI: `--method`, `--R`, `--seed`, `--run_id`, `--mode graph|hero`
+1. CLI extended: `--study --method {ms,erms,pt} --R --N --time_budget_sec --seed --run_id --out_prefix --mode graph|hero --save_best`
 2. Slurm scripts:
-
-   * graph suite: 2 seeds concurrently (R=10)
-   * hero: 1 job (R=20)
+   * `scripts/run_graph_suite.slurm` — graph suite: 2 seeds concurrently (R=10)
+   * `scripts/run_hero.slurm` — hero: 1 job (R=20)
+   * Gate scripts: `scripts/gate_a.slurm`, `scripts/gate_b.slurm`, `scripts/gate_c.slurm`
 3. Analysis scripts:
-
-   * `analysis/aggregate.py` generates trace plots and computes η.
-
-### Deliverables
-
-* `scripts/run_graph_suite.slurm`
-* `scripts/run_hero.slurm`
-* `analysis/aggregate.py`
+   * `analysis/aggregate.py` — generates trace plots and computes η
+   * `analysis/validate_schema.py` — CSV schema validation
 
 ### Gate 6
 
-* 10-minute dry run generates valid plots and η for a toy case.
+* Smoke runs (N=10, all 3 methods) produce valid bisection + log CSVs ✅
 
 ---
 
-## Phase 7 — Decision gates before hero
+## Phase 7 — Decision gates before hero (IN PROGRESS)
 
 * Gate A: N=20 end-to-end shrinks bracket by ≥3 probes.
 * Gate B: ER-MS and PT run without deadlocks and produce diagnostics.
 * Gate C: N=100 10-minute run finds feasibility at least once (any method). If none do, fix γ or schedules before hero.
+
+### Status
+
+* Smoke tests (ms/erms/pt at N=10): ✅
+* Dev runs (N=20, N=50 MS; N=6 ER-MS): ✅
+* Formal gate jobs on HPC: **NOT YET SUBMITTED**
+* Full graph suite: **NOT YET RUN**
+* Hero run: **NOT YET RUN**
+
+### Next steps
+
+1. Submit gate jobs (`scripts/submit_gates.sh`)
+2. Verify gates pass (`scripts/check_gates.sh`)
+3. Submit full graph suite
+4. Choose best method, submit hero run
+5. Run analysis, write report
 
 ---
 

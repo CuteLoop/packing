@@ -134,7 +134,7 @@ Must contain only:
 
 **Goal:** remove the monolith dependency gradually, without breaking the solver.
 
-### Locked approach: “Adapter-first, then migrate”
+### Approach: "Adapter-first, then migrate"
 
 Because your existing physics functions accept `const State*`, we do this in two steps:
 
@@ -173,7 +173,7 @@ Once the system is stable, implement:
 
 **Goal:** shared scaffolding for all methods.
 
-### Locked control-flow change in `main.c`
+### Control-flow change in `main.c`
 
 * Keep old CLI:
 
@@ -220,7 +220,7 @@ Between probes:
 
 **Goal:** baseline.
 
-### Locked MS slice mechanics
+### MS slice mechanics
 
 Inside a slice:
 
@@ -243,7 +243,7 @@ Inside a slice:
 
 **Goal:** elite injection without asynchronous thresholds.
 
-### Locked ER-MS epoch mechanics
+### ER-MS epoch mechanics
 
 Let `K_resample = 200*N` proposals.
 Loop until slice time expires:
@@ -274,7 +274,7 @@ Loop until slice time expires:
 
 **Goal:** PT without slow bisection.
 
-### Locked PT epoch mechanics
+### PT epoch mechanics
 
 Let `K_swap = 200*N`.
 Loop until slice time expires:
@@ -311,7 +311,7 @@ If any replica j becomes feasible:
 
 **Goal:** make hero output pretty and strong.
 
-### Locked polish
+### Polish mechanics
 
 * always MS-polish R=20 at fixed L_best
 * “Stochastic Shave”: if no improvement for 10 minutes:
@@ -379,7 +379,44 @@ No `Polygon`, no `Contact`, no raw grid arrays, no duplicate parameter structs.
 
 ---
 
-## What still needs to happen next (immediate)
+## Phase 6 — Orchestration + analysis-first (DONE ✅)
 
-1. Begin Phase 6 (orchestration + analysis scripts).
-2. Run Phase 7 decision gates.
+**Goal:** avoid wasting 4-hour runs.
+
+### Completed tasks
+
+- CLI extended with `--study --method {ms,erms,pt} --R --N --time_budget_sec --seed --run_id --out_prefix --mode graph|hero --save_best`
+- Slurm scripts created:
+  - `scripts/run_graph_suite.slurm` — 2 seeds × 3 methods × N∈{5,10,20,50,100}, 10 threads each
+  - `scripts/run_hero.slurm` — N=200 R=20 single job
+  - Gate scripts: `scripts/gate_a.slurm`, `scripts/gate_b.slurm`, `scripts/gate_c.slurm`, `scripts/check_gates.sh`
+- Analysis scripts created:
+  - `analysis/aggregate.py` — plots L_best(t), computes η
+  - `analysis/validate_schema.py` — CSV schema validation
+
+### Gate 6
+
+- Smoke runs completed: ms/erms/pt at N=10 produce valid bisection + log CSVs ✅
+
+---
+
+## Phase 7 — Decision gates before hero (IN PROGRESS)
+
+### Status
+
+- Smoke tests (N=10, all 3 methods): ✅ completed, outputs in `out/`
+- Development runs (N=20, N=50 MS; N=6 ER-MS): ✅ completed
+- Gate scripts exist but formal gate jobs NOT yet submitted on HPC
+- Full graph suite NOT yet run
+- Hero run NOT yet run
+
+### What still needs to happen next (immediate)
+
+1. Submit gate jobs on HPC (`scripts/submit_gates.sh`)
+2. Verify gates pass (`scripts/check_gates.sh`)
+3. Submit full graph suite (`scripts/run_graph_suite.slurm`)
+4. Choose best method from graph results
+5. Update `scripts/run_hero.slurm` with winning method
+6. Submit hero run
+7. Run `analysis/aggregate.py` on all outputs
+8. Write up results in report
