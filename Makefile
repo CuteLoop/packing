@@ -1,80 +1,74 @@
 CC = gcc
-CFLAGS = -O2 -std=c11 -Wall -Wextra -pedantic
-LDFLAGS = -lm
-BIN_DIR = bin
+CFLAGS = -O3 -std=c11 -Wall -Wextra -Iinclude -fopenmp
+LDFLAGS = -lm -fopenmp
 
-# Legacy solver targets removed (2025/ solvers deleted).
-# This Makefile is a transitional stub; it will be replaced by
-# run/HPC_DEMO/Makefile when HPC_DEMO is promoted to root.
+SRCDIR = src
+TESTDIR = tests
+BINDIR = bin
 
-.PHONY: all clean help
 
-all:
-	@echo "Legacy targets removed. Use 'make' from run/HPC_DEMO/ to build the solver."
+TRACE ?= 0
+
+SOURCES = $(wildcard $(SRCDIR)/*.c)
+EXTRA_SRCS = $(SRCDIR)/bisection.c $(SRCDIR)/warmstart.c $(SRCDIR)/method_ms_stub.c $(SRCDIR)/method_ms.c $(SRCDIR)/method_erms.c $(SRCDIR)/method_pt.c $(SRCDIR)/polish.c
+SRCS_REFACT = $(filter-out $(SRCDIR)/HPC_parallel.c $(SRCDIR)/HPC_parallel_monolith.c,$(SOURCES)) $(EXTRA_SRCS)
+SRCS_REFACT := $(sort $(SRCS_REFACT))
+
+ifeq ($(TRACE),1)
+	CFLAGS += -finstrument-functions
+	LDFLAGS += -ldl -rdynamic
+endif
+
+.PHONY: all clean test run
+
+all: $(BINDIR)/solver
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+$(BINDIR)/solver: | $(BINDIR)
+	@echo "Compiling refactored solver from $(SRCS_REFACT)"
+	$(CC) $(CFLAGS) $(SRCS_REFACT) -o $@ $(LDFLAGS)
+
+run: all
+	@echo "Run: ./bin/solver N trials"
+	@echo "Example: ./bin/solver 3 5"
+
+test: $(BINDIR)/test_replica_swap $(BINDIR)/test_rebuild_derived $(BINDIR)/test_single_replica_regress $(BINDIR)/test_ms_parallel $(BINDIR)/test_erms_resample $(BINDIR)/test_pt_swap_math $(BINDIR)/test_pt_quench $(BINDIR)/test_polish_shave
+	@./$(BINDIR)/test_replica_swap
+	@./$(BINDIR)/test_rebuild_derived
+	@./$(BINDIR)/test_single_replica_regress
+	@./$(BINDIR)/test_ms_parallel
+	@./$(BINDIR)/test_erms_resample
+	@./$(BINDIR)/test_pt_swap_math
+	@./$(BINDIR)/test_pt_quench
+	@./$(BINDIR)/test_polish_shave
+
+
+$(BINDIR)/test_replica_swap: $(TESTDIR)/test_replica_swap.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_rebuild_derived: $(TESTDIR)/test_rebuild_derived.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_single_replica_regress: $(TESTDIR)/test_single_replica_regress.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_ms_parallel: $(TESTDIR)/test_ms_parallel.c $(SRCDIR)/method_ms.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_erms_resample: $(TESTDIR)/test_erms_resample.c $(SRCDIR)/method_erms.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+
+$(BINDIR)/test_pt_swap_math: $(TESTDIR)/test_pt_swap_math.c $(SRCDIR)/method_pt.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_pt_quench: $(TESTDIR)/test_pt_quench.c $(SRCDIR)/method_pt.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BINDIR)/test_polish_shave: $(TESTDIR)/test_polish_shave.c $(SRCDIR)/polish.c $(SRCDIR)/method_erms.c $(SRCDIR)/annealing.c $(SRCDIR)/replica.c $(SRCDIR)/base_geometry.c $(SRCDIR)/spatial_hash.c $(SRCDIR)/physics.c $(SRCDIR)/utils.c | $(BINDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	rm -rf $(BIN_DIR)
-
-help:
-	@echo "Makefile targets:"
-	@echo "  make         -> n/a (legacy targets removed; see run/HPC_DEMO/)"
-	@echo "  make test    -> run legacy unit tests"
-	@echo "  make clean   -> remove ./bin/"
-
-# Test targets
-TEST_DIR = tests
-
-.PHONY: test
-
-test: CFLAGS_TEST = -Irun/HPC_DEMO/include
-test: CFLAGS_TEST = -Irun/HPC_DEMO/include
-test: $(TEST_DIR)/test_utils $(TEST_DIR)/test_geometry $(TEST_DIR)/test_spatial_hash $(TEST_DIR)/test_aabb $(TEST_DIR)/test_io
-
-# Coverage build / report
-.PHONY: coverage coverage-clean
-
-coverage-clean:
-	rm -rf coverage.info out-coverage
-
-coverage: coverage-clean
-	@echo "Building tests with coverage flags and running them..."
-	$(MAKE) clean
-	$(MAKE) test CFLAGS="$(CFLAGS) -O0 -g -fprofile-arcs -ftest-coverage" CFLAGS_TEST="$(CFLAGS_TEST)"
-	# Run all tests to generate .gcda files
-	./tests/test_geometry || true
-	./tests/test_utils || true
-	./tests/test_spatial_hash || true
-	./tests/test_aabb || true
-	./tests/test_io || true
-	# Capture coverage (requires lcov/genhtml)
-	@if command -v lcov >/dev/null 2>&1; then \
-		lcov --capture --directory . --output-file coverage.info || true; \
-	else \
-		echo "lcov not installed; skipping capture. Install lcov to generate coverage reports."; \
-		exit 0; \
-	fi
-	@if command -v genhtml >/dev/null 2>&1; then \
-		genhtml coverage.info --output-directory out-coverage || true; \
-		echo "Coverage report generated at out-coverage/index.html"; \
-	else \
-		echo "genhtml not installed; coverage.info produced. Install genhtml to generate HTML report."; \
-		exit 0; \
-	fi
-
-
-$(TEST_DIR)/test_utils: $(TEST_DIR)/test_utils.c run/HPC_DEMO/src/utils.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(CFLAGS_TEST) $< run/HPC_DEMO/src/utils.c -o $@ $(LDFLAGS)
-
-$(TEST_DIR)/test_geometry: $(TEST_DIR)/test_geometry.c run/HPC_DEMO/src/base_geometry.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(CFLAGS_TEST) $< run/HPC_DEMO/src/base_geometry.c -o $@ $(LDFLAGS)
-
-$(TEST_DIR)/test_spatial_hash: $(TEST_DIR)/test_spatial_hash.c run/HPC_DEMO/src/spatial_hash.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(CFLAGS_TEST) $< run/HPC_DEMO/src/spatial_hash.c -o $@ $(LDFLAGS)
-
-$(TEST_DIR)/test_aabb: $(TEST_DIR)/test_aabb.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(CFLAGS_TEST) $< -o $@ $(LDFLAGS)
-
-$(TEST_DIR)/test_io: $(TEST_DIR)/test_io.c run/HPC_DEMO/src/utils.c | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(CFLAGS_TEST) $< run/HPC_DEMO/src/utils.c -o $@ $(LDFLAGS)
-
-
+	rm -rf $(BINDIR)
