@@ -3,52 +3,22 @@ CFLAGS = -O2 -std=c11 -Wall -Wextra -pedantic
 LDFLAGS = -lm
 BIN_DIR = bin
 
-SRCS_SA = sa_pack_shrink/sa_pack_shrink.c
-SRCS_SA_POLY = sa_pack_poly_shrink/sa_pack_shrink_poly.c
-SRCS_HPC = HPC/hpc_parallel.c
-SRCS_CMAES = cmaes/cmaes_pack_poly.c
-SRCS_VANILLA = vanilla_sa/sa_pack.c
+# Legacy solver targets removed (2025/ solvers deleted).
+# This Makefile is a transitional stub; it will be replaced by
+# run/HPC_DEMO/Makefile when HPC_DEMO is promoted to root.
 
-ALL_TARGETS = \
-	$(BIN_DIR)/sa_pack_shrink \
-	$(BIN_DIR)/sa_pack_shrink_poly \
-	$(BIN_DIR)/hpc_parallel \
-	$(BIN_DIR)/cmaes_pack_poly \
-	$(BIN_DIR)/sa_pack
+.PHONY: all clean help
 
-.PHONY: all clean run help
-
-all: $(BIN_DIR) $(ALL_TARGETS)
-
-$(BIN_DIR):
-	mkdir -p $(BIN_DIR)
-
-$(BIN_DIR)/sa_pack_shrink: $(SRCS_SA) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
-
-$(BIN_DIR)/sa_pack_shrink_poly: $(SRCS_SA_POLY) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
-
-$(BIN_DIR)/hpc_parallel: $(SRCS_HPC) | $(BIN_DIR)
-	$(CC) -O3 -march=native $(CFLAGS) $< -o $@ $(LDFLAGS)
-
-$(BIN_DIR)/cmaes_pack_poly: $(SRCS_CMAES) | $(BIN_DIR)
-	$(CC) -O3 -march=native $(CFLAGS) $< -o $@ $(LDFLAGS)
-
-$(BIN_DIR)/sa_pack: $(SRCS_VANILLA) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
-
-run: all
-	@echo "Running demo: ./bin/sa_pack_shrink"
-	./bin/sa_pack_shrink
+all:
+	@echo "Legacy targets removed. Use 'make' from run/HPC_DEMO/ to build the solver."
 
 clean:
 	rm -rf $(BIN_DIR)
 
 help:
 	@echo "Makefile targets:"
-	@echo "  make         -> build all binaries into ./bin/" 
-	@echo "  make run     -> build and run ./bin/sa_pack_shrink (default demo)"
+	@echo "  make         -> n/a (legacy targets removed; see run/HPC_DEMO/)"
+	@echo "  make test    -> run legacy unit tests"
 	@echo "  make clean   -> remove ./bin/"
 
 # Test targets
