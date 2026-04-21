@@ -94,8 +94,7 @@ void write_csv(const char *path, const char *prefix, uint64_t run_id, uint64_t s
 
 static void write_best_csv_study(const StudyConfig *cfg, const ReplicaState *r, double L_best) {
     char path[512];
-    snprintf(path, sizeof(path), "%s_%s_N%03d_s%llu_best_state.csv",
-             cfg->out_prefix, cfg->method, cfg->N, (unsigned long long)cfg->seed);
+    snprintf(path, sizeof(path), "%s_best_state.csv", cfg->out_prefix);
 
     FILE *f = fopen(path, "w");
     if (!f) return;
@@ -116,8 +115,7 @@ static void write_best_csv_study(const StudyConfig *cfg, const ReplicaState *r, 
 
 static void write_best_svg_study(const StudyConfig *cfg, const ReplicaState *r, double L_best) {
     char path[512];
-    snprintf(path, sizeof(path), "%s_%s_N%03d_s%llu_best_state.svg",
-             cfg->out_prefix, cfg->method, cfg->N, (unsigned long long)cfg->seed);
+    snprintf(path, sizeof(path), "%s_best_state.svg", cfg->out_prefix);
 
     FILE *f = fopen(path, "w");
     if (!f) return;
@@ -157,8 +155,10 @@ void usage() {
 
 static void usage_study(void) {
     fprintf(stderr, "Study mode usage:\n");
-    fprintf(stderr, "  ./bin/solver --study --method {ms,erms,pt} --R <int> --N <int> ");
-    fprintf(stderr, "--time_budget_sec <sec> --seed <u64> --run_id <u64> --out_prefix <str>\n");
+    fprintf(stderr, "  ./bin/solver --study --method {ms,erms,pt} --R <int> --N <int>\n");
+    fprintf(stderr, "  --time_budget_sec <sec> --seed <u64> --run_id <u64>\n");
+    fprintf(stderr, "  --run_type {smoke|graph|hero|gate_a|gate_b|gate_c|pilot|dev}\n");
+    fprintf(stderr, "  [--out_prefix <str>]  (overrides auto-built path)\n");
     fprintf(stderr, "  [--mode graph|hero] [--save_best]\n");
 }
 
@@ -198,6 +198,9 @@ static int run_study_mode(int argc, char **argv) {
     cfg.weights.mu_out = 1.0;
     int save_best = 0;
     char mode[16] = "graph";
+    /* run_type defaults to "run" if not provided; out_prefix
+       is auto-built from run_type+method+budget unless --out_prefix overrides */
+    strncpy(cfg.run_type, "run", sizeof(cfg.run_type) - 1);
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--study") == 0) {
@@ -214,6 +217,8 @@ static int run_study_mode(int argc, char **argv) {
             cfg.seed = strtoull(argv[++i], NULL, 10);
         } else if (strcmp(argv[i], "--run_id") == 0 && i + 1 < argc) {
             cfg.run_id = strtoull(argv[++i], NULL, 10);
+        } else if (strcmp(argv[i], "--run_type") == 0 && i + 1 < argc) {
+            strncpy(cfg.run_type, argv[++i], sizeof(cfg.run_type) - 1);
         } else if (strcmp(argv[i], "--out_prefix") == 0 && i + 1 < argc) {
             strncpy(cfg.out_prefix, argv[++i], sizeof(cfg.out_prefix) - 1);
         } else if (strcmp(argv[i], "--eps_feas") == 0 && i + 1 < argc) {
@@ -226,10 +231,27 @@ static int run_study_mode(int argc, char **argv) {
     }
 
     if (cfg.N <= 0 || cfg.R <= 0 || cfg.time_budget_sec <= 0.0 ||
-        cfg.method[0] == '\0' || cfg.out_prefix[0] == '\0') {
+        cfg.method[0] == '\0') {
         fprintf(stderr, "Missing required study mode flags.\n");
         usage_study();
         return 1;
+    }
+
+    /* Auto-build structured output path if --out_prefix was not given explicitly.
+       Layout: out/N{NNN}/{run_type}_{method}_{budget}/N{NNN}_{method}_s{seed}_r{run_id}
+       Example: out/N020/gate_a_ms_3m/N020_ms_s42_r0                              */
+    if (cfg.out_prefix[0] == '\0') {
+        char bstr[16];
+        int bsec = (int)cfg.time_budget_sec;
+        if (bsec < 60)        snprintf(bstr, sizeof(bstr), "%ds", bsec);
+        else if (bsec < 3600) snprintf(bstr, sizeof(bstr), "%dm", bsec / 60);
+        else                  snprintf(bstr, sizeof(bstr), "%dh", bsec / 3600);
+        snprintf(cfg.out_prefix, sizeof(cfg.out_prefix),
+                 "out/N%03d/%s_%s_%s/N%03d_%s_s%llu_r%llu",
+                 cfg.N, cfg.run_type, cfg.method, bstr,
+                 cfg.N, cfg.method,
+                 (unsigned long long)cfg.seed,
+                 (unsigned long long)cfg.run_id);
     }
 
     method_runner_fn runner = NULL;
@@ -274,8 +296,7 @@ static int run_study_mode(int argc, char **argv) {
             if (save_best && polish_res.has_state) {
                 write_best_csv_study(&cfg, &polish_res.best_state, result.L_best);
                 write_best_svg_study(&cfg, &polish_res.best_state, result.L_best);
-                printf("Best SVG: %s_%s_N%03d_s%llu_best_state.svg\n",
-                       cfg.out_prefix, cfg.method, cfg.N, (unsigned long long)cfg.seed);
+                printf("Best state: %s_best_state.svg\n", cfg.out_prefix);
             }
         } else {
             printf("Hero mode: bisection found no feasible solution; skipping polish.\n");
@@ -292,8 +313,7 @@ static int run_study_mode(int argc, char **argv) {
         if (save_best && result.feasible_found) {
             write_best_csv_study(&cfg, &result.best_state, result.L_best);
             write_best_svg_study(&cfg, &result.best_state, result.L_best);
-            printf("Best SVG: %s_%s_N%03d_s%llu_best_state.svg\n",
-                   cfg.out_prefix, cfg.method, cfg.N, (unsigned long long)cfg.seed);
+            printf("Best state: %s_best_state.svg\n", cfg.out_prefix);
         }
     }
 

@@ -68,10 +68,8 @@ BisectionResult bisection_run(const StudyConfig *cfg, method_runner_fn runner) {
 
     char bis_path[512];
     char log_path[512];
-    snprintf(bis_path, sizeof(bis_path), "%s_%s_N%03d_s%llu_bisection.csv",
-             cfg->out_prefix, cfg->method, N, (unsigned long long)cfg->seed);
-    snprintf(log_path, sizeof(log_path), "%s_%s_N%03d_s%llu_log.csv",
-             cfg->out_prefix, cfg->method, N, (unsigned long long)cfg->seed);
+    snprintf(bis_path, sizeof(bis_path), "%s_bisection.csv", cfg->out_prefix);
+    snprintf(log_path, sizeof(log_path), "%s_log.csv", cfg->out_prefix);
 
     FILE *f_bis = fopen(bis_path, "w");
     FILE *f_log = fopen(log_path, "w");

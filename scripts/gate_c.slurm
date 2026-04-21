@@ -16,6 +16,14 @@ mkdir -p logs out
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PROC_BIND=true
 
+# Budget-to-string helper (matches solver auto-build logic)
+bstr() { local s=$1; [ "$s" -lt 60 ] && echo "${s}s" && return; [ "$s" -lt 3600 ] && echo "$((s/60))m" && return; echo "$((s/3600))h"; }
+bis_csv() {  # N METHOD SEED RUN_ID BUDGET RUN_TYPE
+    local N=$1 METHOD=$2 SEED=$3 RUN_ID=$4 BUDGET=$5 RUN_TYPE=$6
+    local NP=$(printf 'N%03d' $N)
+    echo "out/${NP}/${RUN_TYPE}_${METHOD}_$(bstr $BUDGET)/${NP}_${METHOD}_s${SEED}_r${RUN_ID}_bisection.csv"
+}
+
 # ============================================================
 # Gate C: N=100 10-minute run finds feasibility at least once
 #
@@ -36,9 +44,8 @@ TOTAL=0
 for METHOD in "${METHODS[@]}"; do
     for SEED in "${SEEDS[@]}"; do
         TOTAL=$((TOTAL + 1))
-        RUN_ID="${METHOD}_${SEED}"
-        PREFIX="out/gateC_${RUN_ID}_N${N}"
-        BISECTION_CSV="${PREFIX}_${METHOD}_N$(printf '%03d' $N)_s${SEED}_bisection.csv"
+        RUN_ID=0
+        BISECTION_CSV=$(bis_csv $N $METHOD $SEED $RUN_ID $BUDGET gate_c)
 
         echo "=== Gate C: method=$METHOD seed=$SEED N=$N budget=${BUDGET}s ==="
         echo "Start: $(date)"
@@ -50,7 +57,8 @@ for METHOD in "${METHODS[@]}"; do
             --R "$R" \
             --time_budget_sec "$BUDGET" \
             --seed "$SEED" \
-            --out_prefix "$PREFIX" \
+            --run_id "$RUN_ID" \
+            --run_type gate_c \
             --mode graph; then
             echo "  Completed"
         else

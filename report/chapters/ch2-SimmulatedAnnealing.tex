@@ -53,8 +53,9 @@ accepted with probability
   \qquad
   \Delta E = E(\conf'; L) - E(\conf_k; L).
 \]
-Symmetry of $q$ ensures this satisfies detailed balance with respect to
-$\pi_{T_k}$. The resulting transition kernel is
+Symmetry of $q$ ensures the satisfaction of detailed balance with respect to
+$\pi_{T_k}$. We need detailed balance to guarantee convergence of our Markov chain 
+to the target distribution. The resulting transition kernel is
 \[
   P_k(\conf \to d\conf')
   = q(\conf' \mid \conf)\,\alpha(\conf, \conf')\,d\conf'
@@ -90,13 +91,18 @@ at each decade of energy: the number of steps spent in any interval
 $[cT, T]$ is $-\log c / \log(1/\rho)$, independent of the absolute
 temperature level.
 
-The theoretically sufficient condition for convergence to the global minimum
+
+As stated in the notes from Sokal, "Monte Carlo is an extremely bad method; it should be used only when all alternative methods are 
+worse. "
+Convergence to the global minimum under the Metropolis--Hastings dynamics
 requires logarithmic cooling $T_k = c / \log(1 + k)$ for a constant $c$
 exceeding the depth of the deepest local energy barrier~\cite{Hajek1988}.
 Such schedules are computationally infeasible for the problem sizes considered
 here; the geometric schedule instead prioritizes practical convergence within
 a fixed computational budget, with $T_{\min}$ and $T_{\max}$ fixed by
 pilot calibration (Section~\ref{sec:pt-pilot}).
+
+
 
 \subsection{Integration with Bisection}
 
@@ -391,36 +397,3 @@ discovered so far, amplifying exploitation at the cost of diversity.
 PT enables direct inter-basin transitions by lifting configurations to
 temperatures where barriers are effectively invisible, then returning
 them to low temperature for refinement.
-
-% ─────────────────────────────────────────────────────────────────
-\section{Summary}
-% ─────────────────────────────────────────────────────────────────
-
-Table~\ref{tab:methods} summarizes the key structural properties of
-the three strategies.
-
-\begin{table}[h]
-\centering
-\caption{Structural comparison of parallel SA variants.}
-\label{tab:methods}
-\begin{tabular}{llll}
-\toprule
-Property & MS & ER-MS & PT \\
-\midrule
-Probabilistic target    & $\pi_T$ (each chain)        & Biased toward low $E$           & $\prod_r \pi_{T_r}$ \\
-Inter-worker comm.      & None                        & Periodic (resample)             & Periodic (swap)     \\
-Comm.\ trigger          & ---                         & Every $200N$ steps              & Every $200N$ steps  \\
-Temperature structure   & Shared schedule             & Shared schedule                 & Fixed ladder        \\
-Elite/cold bias         & None                        & Top $\lceil 0.25R\rceil$        & Cold replica only   \\
-Barrier crossing        & Weak (single-chain)         & Moderate (population spread)    & Strong (PT diffusion) \\
-Early stop condition    & Any worker feasible         & Any worker feasible             & Cold replica feasible \\
-HPC pattern             & Embarrassingly parallel     & Barrier + collective sort       & Neighbor communication \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The three methods represent a progression from zero coupling (MS)
-through unidirectional information flow driven by energy ranking (ER-MS)
-to bidirectional thermodynamic coupling governed by detailed balance (PT).
-Chapter~3 defines the energy function $E(\conf; L)$ explicitly and
-develops the geometric algorithms required to evaluate it.

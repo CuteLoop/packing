@@ -1,0 +1,93 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}Collision Detection for Non-Convex Polygons}{11}{chapter.3}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Non-Convex Polygons and Convex Decomposition}{11}{section.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Decomposition methods.}{12}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}Coordinate Transforms}{12}{section.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}The Separating Axis Theorem}{12}{section.3.3}\protected@file@percent }
+\newlabel{sec:sat}{{3.3}{12}{The Separating Axis Theorem}{section.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}Statement and Proof Sketch}{12}{subsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Projection and Interval Test}{13}{subsection.3.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Candidate Axes for Polygons}{13}{subsection.3.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}Penetration Depth}{13}{subsection.3.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}Broadphase Filtering}{13}{section.3.4}\protected@file@percent }
+\newlabel{sec:broadphase}{{3.4}{13}{Broadphase Filtering}{section.3.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.1}Axis-Aligned Bounding Box Test}{14}{subsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.2}Spatial Hash Grid}{14}{subsection.3.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}Narrowphase Method A: Triangle Decomposition}{14}{section.3.5}\protected@file@percent }
+\newlabel{sec:method-a}{{3.5}{14}{Narrowphase Method A: Triangle Decomposition}{section.3.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Triangle--triangle test.}{14}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cost.}{15}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.6}Narrowphase Method B: Baseline Convex SAT}{15}{section.3.6}\protected@file@percent }
+\newlabel{sec:method-b}{{3.6}{15}{Narrowphase Method B: Baseline Convex SAT}{section.3.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Cost.}{15}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.7}Narrowphase Method C: Cached Convex SAT}{15}{section.3.7}\protected@file@percent }
+\newlabel{sec:method-c}{{3.7}{15}{Narrowphase Method C: Cached Convex SAT}{section.3.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.1}Pre-Pass: Cache Population}{15}{subsection.3.7.1}\protected@file@percent }
+\newlabel{eq:cache-verts}{{3.1}{15}{Pre-Pass: Cache Population}{equation.3.1}{}}
+\newlabel{eq:cache-normals}{{3.2}{15}{Pre-Pass: Cache Population}{equation.3.2}{}}
+\newlabel{eq:cache-aabb}{{3.3}{15}{Pre-Pass: Cache Population}{equation.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.2}Hint-Axis Pre-Filter}{16}{subsection.3.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.3}Full SAT Fallback}{16}{subsection.3.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.4}Cost Reduction}{16}{subsection.3.7.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Approximate floating-point operation counts per energy evaluation.}}{16}{table.caption.9}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:cost}{{3.1}{16}{Approximate floating-point operation counts per energy evaluation}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.8}Connection to the Energy Function}{17}{section.3.8}\protected@file@percent }
+\newlabel{sec:energy-collision}{{3.8}{17}{Connection to the Energy Function}{section.3.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Overlap penalty.}{17}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Boundary penalty.}{17}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.9}Benchmark Design}{17}{section.3.9}\protected@file@percent }
+\newlabel{sec:bench}{{3.9}{17}{Benchmark Design}{section.3.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.9.1}Objective}{17}{subsection.3.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.9.2}Protocol}{17}{subsection.3.9.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.9.3}Primary Metrics}{18}{subsection.3.9.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces Benchmark metrics collected per method.}}{18}{table.caption.12}\protected@file@percent }
+\newlabel{tab:bench-metrics}{{3.2}{18}{Benchmark metrics collected per method}{table.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.3}{\ignorespaces Method C internal diagnostic metrics.}}{18}{table.caption.13}\protected@file@percent }
+\newlabel{tab:bench-cached}{{3.3}{18}{Method C internal diagnostic metrics}{table.caption.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.9.4}Scaling Study}{18}{subsection.3.9.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.9.5}Results and Interpretation}{19}{subsection.3.9.5}\protected@file@percent }
+\newlabel{sec:bench-results}{{3.9.5}{19}{Results and Interpretation}{subsection.3.9.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.10}Integration into the SA Loop}{19}{section.3.10}\protected@file@percent }
+\@setckpt{chapters/ch03_collision_bench}{
+\setcounter{page}{21}
+\setcounter{equation}{3}
+\setcounter{enumi}{3}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{0}
+\setcounter{mpfootnote}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{3}
+\setcounter{section}{10}
+\setcounter{subsection}{0}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{figure}{0}
+\setcounter{table}{3}
+\setcounter{parentequation}{0}
+\setcounter{theorem}{2}
+\setcounter{caption@flags}{2}
+\setcounter{continuedfloat}{0}
+\setcounter{subfigure}{0}
+\setcounter{subtable}{0}
+\setcounter{float@type}{8}
+\setcounter{algorithm}{0}
+\setcounter{ALG@line}{0}
+\setcounter{ALG@rem}{0}
+\setcounter{ALG@nested}{0}
+\setcounter{ALG@Lnr}{2}
+\setcounter{ALG@blocknr}{10}
+\setcounter{ALG@storecount}{0}
+\setcounter{ALG@tmpcounter}{0}
+\setcounter{NAT@ctr}{0}
+\setcounter{section@level}{1}
+\setcounter{Item}{17}
+\setcounter{Hfootnote}{0}
+\setcounter{bookmark@seq@number}{55}
+}

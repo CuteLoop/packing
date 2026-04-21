@@ -39,6 +39,14 @@ R=10
 METHODS="ms erms pt"
 SEEDS="42 99"
 
+# Budget-to-string helper (matches solver auto-build logic)
+bstr() { local s=$1; [ "$s" -lt 60 ] && echo "${s}s" && return; [ "$s" -lt 3600 ] && echo "$((s/60))m" && return; echo "$((s/3600))h"; }
+bis_csv() {  # N METHOD SEED RUN_ID BUDGET RUN_TYPE
+    local N=$1 METHOD=$2 SEED=$3 RUN_ID=$4 BUDGET=$5 RUN_TYPE=$6
+    local NP=$(printf 'N%03d' $N)
+    echo "out/${NP}/${RUN_TYPE}_${METHOD}_$(bstr $BUDGET)/${NP}_${METHOD}_s${SEED}_r${RUN_ID}_bisection.csv"
+}
+
 # Budget per N (seconds) — from Spec Section 12.1
 budget_for_n() {
     case $1 in
@@ -59,13 +67,12 @@ for N in 2 5 10 20 50; do
     BUDGET=$(budget_for_n $N)
     for METHOD in $METHODS; do
         for SEED in $SEEDS; do
-            PREFIX="out/sweep_${METHOD}_N${N}_s${SEED}"
             echo "--- N=$N method=$METHOD seed=$SEED budget=${BUDGET}s ---"
             echo "  Start: $(date)"
 
             $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
                 --time_budget_sec "$BUDGET" --seed "$SEED" --run_id 0 \
-                --out_prefix "$PREFIX" --mode graph --save_best || {
+                --run_type smoke --mode graph --save_best || {
                 echo "  WARNING: solver exited with code $?"
             }
 
@@ -78,4 +85,4 @@ echo ""
 echo "===== SWEEP SMALL COMPLETE ====="
 echo "End: $(date)"
 echo "Outputs:"
-ls -lh out/sweep_* 2>/dev/null | head -60
+ls -lh out/N*/smoke_*/ 2>/dev/null | head -60

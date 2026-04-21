@@ -30,6 +30,7 @@
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
 
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
@@ -45,6 +46,8 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{bm}
 
 % Search paths for figures used in this report. Add any additional
 % project image folders here so \includegraphics can find them when
@@ -86,6 +89,8 @@
 
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\norm}[1]{\lVert #1 \rVert}
+\newcommand{\conf}{\mathbf{c}}
+\newcommand{\poly}{\mathcal{P}}
 
 % ==========================================================
 % Front matter
@@ -124,6 +129,7 @@ methods from applied mathematics.
 
 \include{chapters/ch1-packingproblem}   % <-- your chapter
 \include{chapters/ch2-simmulatedannealing}        % <-- your chapter
+\include{chapters/ch03_collision_bench}        % <-- your chapter
 
 
 

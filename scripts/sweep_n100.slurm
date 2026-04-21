@@ -1,58 +1,58 @@
+
+        echo "--- N=$N method=$METHOD seed=$SEED budget=${BUDGET}s ---"
+
 #!/bin/bash
-#SBATCH --job-name=sweep_n100
+#SBATCH --job-name=pack_n100
 #SBATCH --account=ece569
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=4G
-#SBATCH --time=01:30:00
-#SBATCH --output=logs/sweep_n100_%j.out
-#SBATCH --error=logs/sweep_n100_%j.err
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=8G
+#SBATCH --time=04:00:00
+#SBATCH --output=logs/n100_sweep_%j.out
+#SBATCH --error=logs/n100_sweep_%j.err
 
-# Sweep: N=100 — all 3 methods, 2 seeds each.
-# Budget: 10 min per run (Spec Section 12.1).
-# Total: 3 methods × 2 seeds × 10 min = 60 min + overhead.
-
+# Exit immediately if a command exits with a non-zero status
 set -euo pipefail
 
-cd "$SLURM_SUBMIT_DIR"
-mkdir -p logs out
+# Ensure we run from the directory where the job was submitted
+cd $SLURM_SUBMIT_DIR
 
-if [ -f /etc/profile.d/modules.sh ]; then
-    source /etc/profile.d/modules.sh
-fi
-if command -v module >/dev/null 2>&1; then
-    module purge >/dev/null 2>&1 || true
-    module load gcc  >/dev/null 2>&1 || true
-fi
-
-make -s all
-
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-export OMP_PROC_BIND=true
+# Create output directories
+mkdir -p out logs
 
 SOLVER=./bin/solver
-N=100
-R=10
-BUDGET=600    # 10 minutes
 METHODS="ms erms pt"
-SEEDS="42 99"
+N=100
+BUDGET=3600    # 1 hour maximum per run
+R=10           # 10 threads per seed
 
-echo "===== SWEEP N=100 ====="
-echo "Start: $(date)"
-echo "Host:  $(hostname)"
-echo "Threads: $OMP_NUM_THREADS"
-echo ""
-
-for METHOD in $METHODS; do
-    for SEED in $SEEDS; do
-        PREFIX="out/sweep_${METHOD}_N${N}_s${SEED}"
-        echo "--- N=$N method=$METHOD seed=$SEED budget=${BUDGET}s ---"
-        echo "  Start: $(date)"
+SEED_A=1000
+SEED_B=2000
 
         $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
+
+for METHOD in $METHODS; do
+    echo "Starting: ${METHOD} (Max 1 Hour) | Seed ${SEED_A} & Seed ${SEED_B} concurrently..."
+
+    # Launch Seed A in background
+    OMP_NUM_THREADS=$R $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
+        --time_budget_sec "$BUDGET" --seed "$SEED_A" --run_id 0 \
+        --run_type sweep_n100 --mode graph --save_best &
+    PID_A=$!
+
+    # Launch Seed B in background
+    OMP_NUM_THREADS=$R $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
+        --time_budget_sec "$BUDGET" --seed "$SEED_B" --run_id 1 \
+        --run_type sweep_n100 --mode graph --save_best &
+    PID_B=$!
+
+    # Wait for BOTH seeds of the current method to finish (either by tolerance or timeout)
+    wait $PID_A $PID_B
+    echo "--- ${METHOD} completed (or timed out). Moving to next... ---"
             --time_budget_sec "$BUDGET" --seed "$SEED" --run_id 0 \
+
             --out_prefix "$PREFIX" --mode graph --save_best || {
             echo "  WARNING: solver exited with code $?"
         }

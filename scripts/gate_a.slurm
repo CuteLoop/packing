@@ -16,6 +16,15 @@ mkdir -p logs out
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PROC_BIND=true
 
+# Budget-to-string helper (matches solver auto-build logic)
+bstr() { local s=$1; [ "$s" -lt 60 ] && echo "${s}s" && return; [ "$s" -lt 3600 ] && echo "$((s/60))m" && return; echo "$((s/3600))h"; }
+# Derive the bisection CSV path for a given run (must match solver auto-build)
+bis_csv() {  # N METHOD SEED RUN_ID BUDGET RUN_TYPE
+    local N=$1 METHOD=$2 SEED=$3 RUN_ID=$4 BUDGET=$5 RUN_TYPE=$6
+    local NP=$(printf 'N%03d' $N)
+    echo "out/${NP}/${RUN_TYPE}_${METHOD}_$(bstr $BUDGET)/${NP}_${METHOD}_s${SEED}_r${RUN_ID}_bisection.csv"
+}
+
 # ============================================================
 # Gate A: N=20 end-to-end verification
 # Each method must shrink the bracket by >= 3 probes.
@@ -34,8 +43,8 @@ FAIL=0
 
 for METHOD in "${METHODS[@]}"; do
     for SEED in "${SEEDS[@]}"; do
-        RUN_ID="${METHOD}_${SEED}"
-        PREFIX="out/gateA_${RUN_ID}_N${N}"
+        RUN_ID=0
+        BISECTION_CSV=$(bis_csv $N $METHOD $SEED $RUN_ID $BUDGET gate_a)
 
         echo "=== Gate A: method=$METHOD seed=$SEED N=$N ==="
         echo "Start: $(date)"
@@ -46,11 +55,9 @@ for METHOD in "${METHODS[@]}"; do
             --R "$R" \
             --time_budget_sec "$BUDGET" \
             --seed "$SEED" \
-            --out_prefix "$PREFIX" \
+            --run_id "$RUN_ID" \
+            --run_type gate_a \
             --mode graph
-
-        # Find the bisection CSV
-        BISECTION_CSV="${PREFIX}_${METHOD}_N$(printf '%03d' $N)_s${SEED}_bisection.csv"
 
         if [ ! -f "$BISECTION_CSV" ]; then
             echo "FAIL: CSV not found at $BISECTION_CSV"

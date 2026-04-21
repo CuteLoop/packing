@@ -11,6 +11,7 @@ typedef struct {
     uint64_t run_id;
     char out_prefix[256];
     char method[16];
+    char run_type[32];     /* smoke | graph | hero | gate_a | gate_b | gate_c | pilot | dev */
     double time_budget_sec;
     double eps_feas;
     Weights weights;

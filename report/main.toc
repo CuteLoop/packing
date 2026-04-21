@@ -1,0 +1,63 @@
+\contentsline {chapter}{Preface}{iii}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Optimal Packing of Non-Convex Polygons}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Mathematical Formulation}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Feasibility-Based Search}{1}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Energy-Based Formulations}{2}{subsection.1.1.2}%
+\contentsline {paragraph}{Computational and algorithmic challenges.}{2}{section*.3}%
+\contentsline {chapter}{\numberline {2}Simulated Annealing and Its Parallel Variants}{4}{chapter.2}%
+\contentsline {section}{\numberline {2.1}The Common Probabilistic Target}{4}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Base Markov Chain Dynamics}{5}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Metropolis--Hastings Kernel}{5}{subsection.2.2.1}%
+\contentsline {paragraph}{Proposal structure.}{5}{section*.4}%
+\contentsline {subsection}{\numberline {2.2.2}Cooling Schedule and Mixing}{5}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Integration with Bisection}{6}{subsection.2.2.3}%
+\contentsline {section}{\numberline {2.3}Method A: Multi-Start Simulated Annealing (MS)}{6}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Definition}{6}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Probabilistic Analysis}{6}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Limitations}{6}{subsection.2.3.3}%
+\contentsline {section}{\numberline {2.4}Method B: Elite-Resample Multi-Start (ER-MS)}{7}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Motivation and Interpretation}{7}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Resampling Operator}{7}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Perturbation Model}{7}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Anti-Collapse Mechanism}{8}{subsection.2.4.4}%
+\contentsline {subsection}{\numberline {2.4.5}Relationship to SMC}{8}{subsection.2.4.5}%
+\contentsline {section}{\numberline {2.5}Method C: Parallel Tempering (PT)}{8}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Replica Ensemble and Joint Distribution}{8}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Within-Replica Dynamics}{9}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Replica Exchange}{9}{subsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.5.4}Mechanism: Temperature-Assisted Basin Escape}{9}{subsection.2.5.4}%
+\contentsline {subsection}{\numberline {2.5.5}Early Stopping Criterion}{9}{subsection.2.5.5}%
+\contentsline {subsection}{\numberline {2.5.6}Pilot Calibration}{10}{subsection.2.5.6}%
+\contentsline {section}{\numberline {2.6}Energy Landscape Interpretation}{10}{section.2.6}%
+\contentsline {chapter}{\numberline {3}Collision Detection for Non-Convex Polygons}{11}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Non-Convex Polygons and Convex Decomposition}{11}{section.3.1}%
+\contentsline {paragraph}{Decomposition methods.}{12}{section*.5}%
+\contentsline {section}{\numberline {3.2}Coordinate Transforms}{12}{section.3.2}%
+\contentsline {section}{\numberline {3.3}The Separating Axis Theorem}{12}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Statement and Proof Sketch}{12}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Projection and Interval Test}{13}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Candidate Axes for Polygons}{13}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Penetration Depth}{13}{subsection.3.3.4}%
+\contentsline {section}{\numberline {3.4}Broadphase Filtering}{13}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Axis-Aligned Bounding Box Test}{14}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Spatial Hash Grid}{14}{subsection.3.4.2}%
+\contentsline {section}{\numberline {3.5}Narrowphase Method A: Triangle Decomposition}{14}{section.3.5}%
+\contentsline {paragraph}{Triangle--triangle test.}{14}{section*.6}%
+\contentsline {paragraph}{Cost.}{15}{section*.7}%
+\contentsline {section}{\numberline {3.6}Narrowphase Method B: Baseline Convex SAT}{15}{section.3.6}%
+\contentsline {paragraph}{Cost.}{15}{section*.8}%
+\contentsline {section}{\numberline {3.7}Narrowphase Method C: Cached Convex SAT}{15}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Pre-Pass: Cache Population}{15}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}Hint-Axis Pre-Filter}{16}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Full SAT Fallback}{16}{subsection.3.7.3}%
+\contentsline {subsection}{\numberline {3.7.4}Cost Reduction}{16}{subsection.3.7.4}%
+\contentsline {section}{\numberline {3.8}Connection to the Energy Function}{17}{section.3.8}%
+\contentsline {paragraph}{Overlap penalty.}{17}{section*.10}%
+\contentsline {paragraph}{Boundary penalty.}{17}{section*.11}%
+\contentsline {section}{\numberline {3.9}Benchmark Design}{17}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}Objective}{17}{subsection.3.9.1}%
+\contentsline {subsection}{\numberline {3.9.2}Protocol}{17}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.9.3}Primary Metrics}{18}{subsection.3.9.3}%
+\contentsline {subsection}{\numberline {3.9.4}Scaling Study}{18}{subsection.3.9.4}%
+\contentsline {subsection}{\numberline {3.9.5}Results and Interpretation}{19}{subsection.3.9.5}%
+\contentsline {section}{\numberline {3.10}Integration into the SA Loop}{19}{section.3.10}%

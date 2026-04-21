@@ -31,13 +31,12 @@ SEED=12345
 BUDGET=280     # 280s SA budget, ~20s headroom within 5-min wall clock
 METHOD=erms
 RUN_ID=2
-PREFIX="out/dry_${METHOD}_N${N}_s${SEED}"
 
 echo "=== Dry run: ${METHOD} N=${N} R=${R} seed=${SEED} budget=${BUDGET}s ==="
 echo "  Threads: $OMP_NUM_THREADS  Host: $(hostname)  Date: $(date)"
 
 ./bin/solver --study --method "$METHOD" --mode graph --R "$R" --N "$N" \
     --time_budget_sec "$BUDGET" --seed "$SEED" --run_id "$RUN_ID" \
-    --out_prefix "$PREFIX" --save_best
+    --run_type smoke --save_best
 
 echo "=== Dry run ER-MS complete ==="

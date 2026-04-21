@@ -32,15 +32,15 @@ BUDGET=14400   # 4 hours
 
 METHOD=erms    # best method from graph suite (update after Phase 7)
 
-PREFIX="out/hero_${METHOD}_N${N}_s${SEED}"
-
 echo "=== Hero run: ${METHOD} N=${N} R=${R} budget=${BUDGET}s ==="
 
 $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
     --time_budget_sec "$BUDGET" --seed "$SEED" --run_id 0 \
-    --out_prefix "$PREFIX" --mode hero --save_best
+    --run_type hero --mode hero --save_best
 
 echo "=== Hero run complete ==="
 
-# Generate analysis
-python3 analysis/aggregate.py "${PREFIX}_${METHOD}_N$(printf '%03d' $N)_s${SEED}_bisection.csv"
+# Generate analysis — derive CSV path using same convention as solver
+BSTR="${BUDGET}h"  # 14400/3600 = 4h
+BIS_CSV="out/N$(printf '%03d' $N)/hero_${METHOD}_${BSTR}/N$(printf '%03d' $N)_${METHOD}_s${SEED}_r0_bisection.csv"
+python3 analysis/aggregate.py "$BIS_CSV"

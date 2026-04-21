@@ -28,7 +28,6 @@ R=10
 METHOD="pt"
 BUDGET=600    # 10 minutes
 SEED=42
-PREFIX="out/pilot_N100_s42"
 
 echo "=== PT Pilot ==="
 echo "N=$N  R=$R  budget=${BUDGET}s  seed=$SEED"
@@ -40,14 +39,15 @@ echo "Start: $(date)"
     --R "$R" \
     --time_budget_sec "$BUDGET" \
     --seed "$SEED" \
-    --out_prefix "$PREFIX" \
+    --run_id 0 \
+    --run_type pilot \
     --mode graph
 
 echo "End: $(date)"
 echo ""
 
 # --- Extract and display swap acceptance ---
-BISECTION_CSV="${PREFIX}_${METHOD}_N$(printf '%03d' $N)_s${SEED}_bisection.csv"
+BISECTION_CSV="out/N$(printf '%03d' $N)/pilot_${METHOD}_$(( BUDGET/60 ))m/N$(printf '%03d' $N)_${METHOD}_s${SEED}_r0_bisection.csv"
 
 if [ -f "$BISECTION_CSV" ]; then
     echo "=== Swap Acceptance Summary ==="

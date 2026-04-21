@@ -1,0 +1,563 @@
+\chapter{Collision Detection for Non-Convex Polygons}
+
+Evaluating the energy function $E(\conf; L)$ at every Markov chain step
+requires determining, for each pair of polygons, whether they overlap
+and by how much.
+This computation is the dominant cost kernel of the entire optimization:
+for $N$ polygons, there are $\binom{N}{2} = O(N^2)$ candidate pairs,
+and each narrowphase test involves nontrivial geometric work.
+The collision system occupies the same structural role in this project
+as force evaluation in molecular dynamics or matrix multiplication in
+linear algebra—its throughput sets the ceiling on how many SA steps
+can be executed per second.
+
+This chapter develops the mathematical foundations of collision detection
+for non-convex polygons, presents the three narrowphase implementations
+benchmarked in this study, and analyzes their cost structure.
+
+%─────────────────────────────────────────────────────────────────
+\section{Non-Convex Polygons and Convex Decomposition}
+%─────────────────────────────────────────────────────────────────
+
+The polygon used in this study is a planar non-convex (concave) polygon
+$\mathcal{P} \subset \mathbb{R}^2$ with $V$ vertices.
+A polygon is convex if for every pair of interior points $p, q$,
+the segment $[p, q]$ lies entirely within $\mathcal{P}$.
+Non-convex polygons violate this condition; equivalently, their
+boundary is not everywhere locally on the same side of every edge
+normal.
+
+The Separating Axis Theorem, which provides the most efficient exact
+intersection test, applies only to convex shapes.
+To handle non-convex polygons, we decompose $\mathcal{P}$ into a
+collection of convex \emph{parts}:
+\[
+  \mathcal{P} = \bigcup_{j=1}^{M} C_j, \qquad
+  C_j \text{ convex},
+\]
+where the parts cover $\mathcal{P}$ exactly (with at most boundary overlap).
+Two non-convex polygon instances $\mathcal{P}_i$ and $\mathcal{P}_k$
+(at poses $(x_i, y_i, \theta_i)$ and $(x_k, y_k, \theta_k)$) intersect
+if and only if at least one part of $\mathcal{P}_i$ intersects at least
+one part of $\mathcal{P}_k$:
+\[
+  \mathcal{P}_i \cap \mathcal{P}_k \neq \emptyset
+  \;\iff\;
+  \exists\, j \in \{1,\dots,M\},\; l \in \{1,\dots,M\}
+  \;\text{ s.t. }\;
+  C_j^{(i)} \cap C_l^{(k)} \neq \emptyset,
+\]
+where $C_j^{(i)}$ denotes part $j$ of polygon $i$ transformed to
+world space. This reduces non-convex intersection to a collection of
+convex--convex tests.
+
+\paragraph{Decomposition methods.}
+Two decompositions are used in this study:
+\begin{itemize}
+  \item \textbf{Triangulation (Method A).}
+        $\mathcal{P}$ is decomposed into $M = V - 2$ triangles via
+        fan triangulation from a reference vertex. Each part $C_j$ is
+        a triangle, giving the smallest possible number of vertices per
+        part (3) at the cost of the largest number of parts.
+  \item \textbf{Convex decomposition (Methods B and C).}
+        $\mathcal{P}$ is decomposed into a smaller number of convex
+        polygons, each with more vertices. Fewer parts reduce the
+        number of part--part pairs; larger vertex counts increase the
+        per-pair axis budget.
+\end{itemize}
+
+%─────────────────────────────────────────────────────────────────
+\section{Coordinate Transforms}
+%─────────────────────────────────────────────────────────────────
+
+Each polygon instance $i$ is defined by a pose
+$(x_i, y_i, \theta_i) \in \mathbb{R}^2 \times [0, 2\pi)$.
+Local-frame vertices $v \in \mathbb{R}^2$ are mapped to world frame by
+the rigid-body transform
+\[
+  T_i(v) = R(\theta_i)\, v + \mathbf{t}_i,
+  \qquad
+  R(\theta) =
+  \begin{pmatrix} \cos\theta & -\sin\theta \\
+                  \sin\theta & \phantom{-}\cos\theta \end{pmatrix},
+  \quad
+  \mathbf{t}_i = (x_i, y_i)^\top.
+\]
+The world-frame vertices of part $C_j^{(i)}$ are
+$\{T_i(v) : v \in C_j\}$.
+Edge normals transform under rotation only: if $\mathbf{n}$ is a
+unit outward normal in local frame, its world-frame counterpart is
+$R(\theta_i)\,\mathbf{n}$.
+
+A naive implementation recomputes $R(\theta_i)$ and all transformed
+vertices inside the innermost pair loop, evaluating $\sin$ and $\cos$
+once per pair--part test. The cached method (Section~\ref{sec:method-c})
+amortizes this cost over all tests involving polygon $i$.
+
+%─────────────────────────────────────────────────────────────────
+\section{The Separating Axis Theorem}
+\label{sec:sat}
+%─────────────────────────────────────────────────────────────────
+
+\subsection{Statement and Proof Sketch}
+
+\begin{theorem}[Separating Axis Theorem]
+Let $P, Q \subset \mathbb{R}^2$ be compact convex sets.
+Then $P \cap Q = \emptyset$ if and only if there exists a unit vector
+$\mathbf{n} \in \mathbb{R}^2$ such that
+\[
+  \max_{p \in P}\, \langle p, \mathbf{n} \rangle
+  \;<\;
+  \min_{q \in Q}\, \langle q, \mathbf{n} \rangle.
+\]
+Such a vector is called a \emph{separating axis}.
+\end{theorem}
+
+The ``if'' direction is immediate: if a separating axis exists then no
+point belongs to both projected intervals, so $P \cap Q = \emptyset$.
+The ``only if'' direction follows from the separating hyperplane theorem
+for convex sets: if $P \cap Q = \emptyset$, by convexity and compactness
+there exists a hyperplane (in $\mathbb{R}^2$, a line) strictly separating
+them, whose normal is the required $\mathbf{n}$.
+
+\subsection{Projection and Interval Test}
+
+For a convex polygon $P$ with vertices $\{v_1, \dots, v_k\}$, the
+projection onto axis $\mathbf{n}$ yields the interval
+\[
+  I_P(\mathbf{n}) = \Bigl[
+    \min_{1 \le j \le k} \langle v_j, \mathbf{n} \rangle,\;
+    \max_{1 \le j \le k} \langle v_j, \mathbf{n} \rangle
+  \Bigr].
+\]
+Two intervals $I_P = [a, b]$ and $I_Q = [c, d]$ are \emph{disjoint}
+if $b < c$ or $d < a$. Disjointness on any axis certifies non-intersection.
+
+\subsection{Candidate Axes for Polygons}
+
+For two convex polygons with $k_1$ and $k_2$ vertices respectively,
+it suffices to test only $k_1 + k_2$ candidate axes: the outward edge
+normals of each polygon. This follows from the observation that the
+extremal separating direction between two convex polygons must be
+perpendicular to a face of one of them.
+
+\begin{corollary}
+Two convex polygons $P$ (with $k_1$ edges) and $Q$ (with $k_2$ edges)
+are disjoint if and only if a separating axis exists among the $k_1 + k_2$
+outward edge normals of $P$ and $Q$.
+\end{corollary}
+
+The algorithm tests axes in sequence and returns \textsc{disjoint} as
+soon as any separating axis is found (\emph{early-out}).
+If all $k_1 + k_2$ axes yield overlapping intervals, the algorithm
+returns \textsc{intersecting}.
+
+\subsection{Penetration Depth}
+
+When the polygons do intersect, the minimum translational distance (MTD)
+required to separate them is the minimum interval overlap over all axes:
+\[
+  d_{\mathrm{pen}} = \min_{\mathbf{n} \in \mathcal{A}}
+  \max\!\bigl(0,\;
+    \min(b_{P}, b_{Q}) - \max(a_{P}, a_{Q})
+  \bigr),
+\]
+where $I_P(\mathbf{n}) = [a_P, b_P]$, $I_Q(\mathbf{n}) = [a_Q, b_Q]$,
+and $\mathcal{A}$ is the set of candidate axes.
+The MTD provides a natural penalty signal: deeper interpenetrations
+contribute more to the energy function.
+
+%─────────────────────────────────────────────────────────────────
+\section{Broadphase Filtering}
+\label{sec:broadphase}
+%─────────────────────────────────────────────────────────────────
+
+For $N$ polygons, there are $\binom{N}{2}$ instance pairs and
+$\binom{NM}{2}$ part pairs in the worst case.
+Narrowphase SAT is applied only to pairs that pass a cheap
+\emph{broadphase} filter, which conservatively rejects pairs
+that cannot possibly intersect.
+
+\subsection{Axis-Aligned Bounding Box Test}
+
+The axis-aligned bounding box (AABB) of a transformed polygon instance
+$\mathcal{P}_i$ in world frame is
+\[
+  \mathrm{AABB}(\mathcal{P}_i)
+  = \Bigl[\min_j (T_i(v_j))_x,\; \max_j (T_i(v_j))_x\Bigr]
+  \times
+  \Bigl[\min_j (T_i(v_j))_y,\; \max_j (T_i(v_j))_y\Bigr].
+\]
+Two polygons can intersect only if their AABBs overlap, since the AABB
+is a convex superset of the polygon. AABB overlap is tested in $O(1)$
+via four scalar comparisons and rejects non-proximate pairs with no
+trigonometric cost.
+
+Per-part AABBs are computed analogously for each convex part $C_j^{(i)}$,
+providing a second level of filtering before the narrowphase is invoked.
+
+\subsection{Spatial Hash Grid}
+
+For $N > 10$, the cost of testing all $\binom{N}{2}$ AABB pairs
+becomes significant. A spatial hash grid partitions the domain
+$[0, L]^2$ into cells of width $h$ and assigns each polygon to the
+cells overlapping its AABB. Only polygons sharing at least one cell
+are candidate pairs.
+
+The grid is stored as a compact hash table: cell keys are hashed to
+buckets, and each bucket stores a linked list of polygon indices.
+For a uniform random configuration at packing fraction $\phi$, the
+expected number of neighbors per polygon is $O(1)$ for a cell size
+$h$ proportional to the polygon diameter, giving $O(N)$ total candidate
+pairs and reducing the broadphase from $O(N^2)$ to $O(N)$ in expectation.
+
+The grid is rebuilt every time a configuration is modified---captured
+in the \texttt{rebuild\_derived} call---so its cost is amortized over
+all pair tests in the subsequent energy evaluation.
+
+%─────────────────────────────────────────────────────────────────
+\section{Narrowphase Method A: Triangle Decomposition}
+\label{sec:method-a}
+%─────────────────────────────────────────────────────────────────
+
+Method A decomposes each polygon into $M = V - 2$ triangles via fan
+triangulation from vertex $v_1$:
+\[
+  \mathcal{P} = \bigcup_{j=2}^{V-1} \triangle(v_1, v_j, v_{j+1}).
+\]
+Intersection between two polygon instances is tested by checking all
+$M^2 = (V-2)^2$ triangle--triangle pairs.
+
+\paragraph{Triangle--triangle test.}
+Two triangles $\triangle ABC$ and $\triangle DEF$ intersect if and only
+if any edge of one separates them under SAT with 6 candidate axes
+(3 edge normals per triangle), or one triangle contains a vertex of
+the other. This is a fully degenerate instance of the general convex
+polygon SAT with $k_1 = k_2 = 3$.
+
+\paragraph{Cost.}
+Each triangle--triangle test requires at most $6$ axis projections,
+each of cost $O(3)$ dot products, giving $O(18)$ floating-point
+operations per pair in the worst case with no early-out.
+The total narrowphase cost for one polygon--polygon test is
+$O(M^2) = O((V-2)^2)$ in the worst case, with early-out reducing
+average cost substantially in non-intersecting configurations.
+
+%─────────────────────────────────────────────────────────────────
+\section{Narrowphase Method B: Baseline Convex SAT}
+\label{sec:method-b}
+%─────────────────────────────────────────────────────────────────
+
+Method B applies SAT directly to each pair of convex parts
+$C_j^{(i)}$ and $C_l^{(k)}$ in world coordinates.
+For each part pair, the algorithm:
+\begin{enumerate}
+  \item Recomputes the world-frame vertices of $C_j^{(i)}$ by applying
+        $T_i$ to all local vertices.
+  \item Recomputes the world-frame edge normals of $C_j^{(i)}$ by
+        applying $R(\theta_i)$ to all local normals.
+  \item Repeats steps 1--2 for $C_l^{(k)}$.
+  \item Tests all $k_j + k_l$ candidate axes via projection and
+        interval overlap.
+\end{enumerate}
+Steps 1--3 are performed fresh for every part pair, even when polygon
+$i$ appears in multiple tests during the same energy evaluation.
+If polygon $i$ has $D$ neighbors, its transform $T_i$ is applied
+$D \cdot M$ times: once per part per neighbor.
+
+\paragraph{Cost.}
+For a polygon with $M$ parts each of $k$ vertices, evaluating
+$E_{\mathrm{overlap}}$ for one polygon against all $D$ neighbors costs
+\[
+  O(D \cdot M^2 \cdot k)
+\]
+floating-point operations, where the $M^2$ factor counts part--part
+pairs and the $k$ factor counts projections per axis.
+The trigonometric cost ($\sin$, $\cos$) is $O(D \cdot M)$.
+
+%─────────────────────────────────────────────────────────────────
+\section{Narrowphase Method C: Cached Convex SAT}
+\label{sec:method-c}
+%─────────────────────────────────────────────────────────────────
+
+Method C eliminates the redundant per-pair transform recomputations
+by caching world-frame data for all $N$ polygons in a per-thread
+\texttt{Workspace} before the pair loop begins.
+
+\subsection{Pre-Pass: Cache Population}
+
+Before any pair test, a single pass over all $N$ polygons computes and
+stores in the \texttt{Workspace}:
+\begin{align}
+  \text{World vertices:}\quad &
+  v^{(i)}_{\mathrm{world}} = T_i(v^{(i)}_{\mathrm{local}})
+  \quad \forall i, \forall v, \label{eq:cache-verts} \\
+  \text{World normals:}\quad &
+  \mathbf{n}^{(i)}_{\mathrm{world}} = R(\theta_i)\,\mathbf{n}^{(i)}_{\mathrm{local}}
+  \quad \forall i, \forall \text{ edge}, \label{eq:cache-normals} \\
+  \text{AABBs:}\quad &
+  \mathrm{AABB}(C_j^{(i)})
+  \quad \forall i, \forall j. \label{eq:cache-aabb}
+\end{align}
+The rotation $R(\theta_i)$ is evaluated once per polygon per energy
+evaluation, with $\sin(\theta_i)$ and $\cos(\theta_i)$ stored as scalars.
+All subsequent axis projections read from the cached arrays.
+Cache population costs $O(NMk)$ uniformly, amortized as $O(k/D)$ per
+pair test for a polygon with $D$ neighbors.
+
+\subsection{Hint-Axis Pre-Filter}
+
+Before executing the full $k_j + k_l$-axis SAT loop, Method C tests a
+single \emph{hint axis}: the unit vector connecting the centroids of
+the two parts:
+\[
+  \mathbf{n}_{\mathrm{hint}}
+  = \frac{\bar{C}_j^{(i)} - \bar{C}_l^{(k)}}
+         {\|\bar{C}_j^{(i)} - \bar{C}_l^{(k)}\|},
+\]
+where $\bar{C}_j^{(i)}$ denotes the centroid of part $j$ of instance $i$.
+If the projections of $C_j^{(i)}$ and $C_l^{(k)}$ onto
+$\mathbf{n}_{\mathrm{hint}}$ are disjoint, the parts are immediately
+classified as non-intersecting at the cost of $2k$ dot products---
+substantially cheaper than the full SAT loop.
+
+The hint axis is effective because separated polygons in a packing
+are most commonly separated along the direction between their centers.
+It provides a ``free'' early-out for the majority of non-intersecting
+pairs that survive AABB filtering.
+
+\subsection{Full SAT Fallback}
+
+If the hint axis does not separate the parts, the full SAT loop over
+all $k_j + k_l$ cached world normals is executed with early-out.
+Projections read directly from the pre-computed vertex arrays
+(\ref{eq:cache-verts})--(\ref{eq:cache-normals}), avoiding all
+trigonometric recomputation.
+
+\subsection{Cost Reduction}
+
+Let $D$ be the average number of polygon neighbors, $M$ the parts per
+polygon, and $k$ the vertices per part.
+Table~\ref{tab:cost} compares the operation counts per energy evaluation.
+
+\begin{table}[h]
+\centering
+\caption{Approximate floating-point operation counts per energy evaluation.}
+\label{tab:cost}
+\begin{tabular}{lll}
+\toprule
+Step & Method B & Method C \\
+\midrule
+$\sin$/$\cos$ evaluations & $O(DNM)$ & $O(N)$ \\
+Vertex transforms & $O(DNMk)$ & $O(NMk)$ (pre-pass) \\
+Axis projections (per pair) & $O(M^2 k)$ & $O(k)$ hint + $O(M^2 k)$ fallback \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For $D \gg 1$ (dense packing) the trigonometric saving is the dominant
+effect: Method C evaluates $\sin$/$\cos$ exactly $N$ times per energy
+call regardless of density, while Method B evaluates them $DNM$ times.
+
+%─────────────────────────────────────────────────────────────────
+\section{Connection to the Energy Function}
+\label{sec:energy-collision}
+%─────────────────────────────────────────────────────────────────
+
+The collision system feeds directly into the energy function introduced
+in Chapter~1:
+\[
+  E(\conf; L) = E_{\mathrm{overlap}}(\conf) + E_{\mathrm{boundary}}(\conf; L).
+\]
+
+\paragraph{Overlap penalty.}
+For each pair of polygon instances $(i, k)$ found to intersect by the
+narrowphase, the overlap penalty is the sum of penetration depths over
+all intersecting part pairs:
+\[
+  E_{\mathrm{overlap}}(\conf)
+  = \sum_{i < k} \sum_{\substack{j,\, l \\ C_j^{(i)} \cap C_l^{(k)} \neq \emptyset}}
+    d_{\mathrm{pen}}\!\left(C_j^{(i)},\, C_l^{(k)}\right).
+\]
+This penalty is zero if and only if no two polygons overlap, i.e., the
+configuration is collision-free.
+
+\paragraph{Boundary penalty.}
+For each polygon $i$, the boundary penalty accumulates for every
+vertex lying outside the container $[0, L]^2$:
+\[
+  E_{\mathrm{boundary}}(\conf; L)
+  = \sum_{i=1}^N \sum_{v \in \mathcal{P}_i}
+    \bigl\| \max(\mathbf{0},\, -T_i(v)) \bigr\|
+    + \bigl\| \max(\mathbf{0},\, T_i(v) - L\,\mathbf{1}) \bigr\|,
+\]
+where the $\max$ is taken componentwise.
+A configuration is feasible (Section~\ref{sec:bisection-integration})
+when both penalties are below the threshold
+$\varepsilon_{\mathrm{feas}}$.
+
+%─────────────────────────────────────────────────────────────────
+\section{Benchmark Design}
+\label{sec:bench}
+%─────────────────────────────────────────────────────────────────
+
+\subsection{Objective}
+
+The microbenchmark isolates the collision system from the SA loop
+to measure throughput in controlled conditions. Its purpose is twofold:
+(i) to verify that Method C achieves a concrete speedup over Methods A
+and B before committing to the 4-hour hero runs, and (ii) to quantify
+the rejection efficiency of the broadphase and hint-axis filter, which
+determines what fraction of SA steps incur full SAT cost.
+
+\subsection{Protocol}
+
+A fixed set of $N$ polygon instances is placed at random non-overlapping
+positions. The full $\binom{N}{2}$ pair evaluation loop is then executed
+$R_{\mathrm{bench}}$ times, and wall-clock time is recorded. The same
+configuration is used for all three methods, so differences in timing
+reflect only the collision algorithm.
+
+The benchmark is invoked as:
+\begin{verbatim}
+  ./bench <N> <R_bench> <out.csv>
+\end{verbatim}
+
+\subsection{Primary Metrics}
+
+The following quantities are recorded for each method:
+
+\begin{table}[h]
+\centering
+\caption{Benchmark metrics collected per method.}
+\label{tab:bench-metrics}
+\begin{tabular}{ll}
+\toprule
+Metric & Definition \\
+\midrule
+\textbf{Pairs total} & $\binom{N}{2}$ instance pairs evaluated \\
+\textbf{Broadphase pass} & Pairs surviving instance AABB filter \\
+\textbf{Narrow calls} & Narrowphase invocations \\
+\textbf{Collisions} & Intersecting pairs found \\
+\textbf{Wall time (s)} & Total elapsed time \\
+\textbf{Mpairs/s} & Million instance pairs per second \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For Method C, additional counters are recorded to expose the filtering
+cascade:
+
+\begin{table}[h]
+\centering
+\caption{Method C internal diagnostic metrics.}
+\label{tab:bench-cached}
+\begin{tabular}{ll}
+\toprule
+Metric & Definition \\
+\midrule
+\textbf{Part pairs} & Total part--part pairs entering narrowphase \\
+\textbf{Part AABB pass} & Part pairs surviving per-part AABB filter \\
+\textbf{Hint tests} & Hint-axis projections executed \\
+\textbf{Hint rejects} & Pairs rejected by hint axis \\
+\textbf{SAT full calls} & Full SAT loop invocations \\
+\textbf{SAT hits} & SAT calls returning intersection \\
+\textbf{SAT axes tested} & Total axes evaluated across SAT calls \\
+\textbf{Avg axes / SAT call} & SAT axes tested $\div$ SAT full calls \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ratio \textbf{Hint rejects / Part AABB pass} measures the
+effectiveness of the hint-axis pre-filter: a high ratio indicates
+that most surviving AABB pairs are resolved cheaply without
+entering the full SAT loop.
+The \textbf{Avg axes / SAT call} metric quantifies early-out
+effectiveness within the SAT loop itself.
+
+\subsection{Scaling Study}
+
+The benchmark is run at $N \in \{10, 20, 50, 100, 200\}$ to characterize
+how throughput scales with system size. For each $N$, three placement
+regimes are evaluated:
+\begin{enumerate}
+  \item \textbf{Sparse:} polygons placed at random with low overlap
+        probability. Tests broadphase efficiency.
+  \item \textbf{Dense:} polygons packed at high density near feasibility.
+        Tests narrowphase cost in the regime the SA spends most time.
+  \item \textbf{Jammed:} polygons at a jammed configuration with maximal
+        neighbor count. Tests worst-case narrowphase cost.
+\end{enumerate}
+
+\subsection{Results and Interpretation}
+\label{sec:bench-results}
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Pairs total & Broad pass & Narrow calls & Collisions & Time (s) \\
+\midrule
+Triangle (A) & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} \\
+SAT baseline (B) & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} \\
+SAT cached (C) & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} & \texttt{\_} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Method C diagnostic & Value \\
+\midrule
+Part pairs & \texttt{\_} \\
+Part AABB pass & \texttt{\_} \\
+Hint tests & \texttt{\_} \\
+Hint rejects & \texttt{\_} \\
+SAT full calls & \texttt{\_} \\
+SAT hits & \texttt{\_} \\
+SAT axes tested & \texttt{\_} \\
+Avg axes / SAT call & \texttt{\_} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The expected outcome, borne out by the cascade structure of Method C,
+is as follows. Most polygon pairs are rejected by the instance-level
+AABB filter, so the broadphase pass rate should be small ($< 20\%$
+for sparse configurations). Of the pairs that survive, the per-part
+AABB filter and hint-axis pre-filter together reject the majority before
+any full SAT loop is invoked. The full SAT loop is called only for pairs
+that are either intersecting or geometrically close to intersection,
+and among those calls, the early-out terminates the axis loop after
+on average far fewer than $k_j + k_l$ tests. This cascade is the
+mechanism by which Method C achieves substantially higher throughput
+than Methods A and B at equal correctness.
+
+%─────────────────────────────────────────────────────────────────
+\section{Integration into the SA Loop}
+%─────────────────────────────────────────────────────────────────
+
+In the context of the optimization study, the collision system is
+invoked at every accepted SA proposal that changes any polygon's pose.
+Per-thread \texttt{Workspace} instances are allocated once at
+thread initialization and reused across all energy evaluations,
+avoiding heap allocation in the inner loop.
+
+After a pose update, \texttt{rebuild\_derived} recomputes the world
+vertices, rotated axes, and AABBs for the moved polygon only, and
+updates its spatial hash cell memberships. A full grid rebuild is
+triggered only when global configuration changes require it
+(warm-start, clone, or swap operations).
+This incremental update strategy reduces the pre-pass cost of
+Method C from $O(NMk)$ to $O(Mk)$ per SA step in the common case
+where only one polygon moves at a time.
+
+The collision throughput therefore sets the wall-clock budget for
+SA step rate: if Method C achieves $T_{\mathrm{narrow}}$ microseconds
+per narrowphase call and the average polygon has $D$ neighbors at
+$M$ parts each, the expected energy evaluation time per SA step is
+approximately $D \cdot M^2 \cdot T_{\mathrm{narrow}}$ microseconds,
+plus the fixed overhead of the AABB and hint-axis filters.
+Chapter 4 uses the benchmark throughput numbers from
+Table~\ref{tab:bench-results} to project feasible SA step rates for
+each problem size $N$.
