@@ -1,6 +1,3 @@
-
-        echo "--- N=$N method=$METHOD seed=$SEED budget=${BUDGET}s ---"
-
 #!/bin/bash
 #SBATCH --job-name=pack_n100
 #SBATCH --account=ece569
