@@ -1,4 +1,6 @@
 #!/bin/bash
+# Load GNU compiler module for HPC clusters (ignore error if not present)
+module load gnu8/8.3.0 2>/dev/null || true
 set -euo pipefail
 
 # modules may not exist in some shells
