@@ -1,6 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=pack_n100
 #SBATCH --account=ece569
+#!/bin/bash
+#SBATCH --job-name=pack_n100
+#SBATCH --account=ece569
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -26,6 +29,9 @@ BUDGET=3600    # 1 hour maximum per run
 R=10           # 10 threads per seed
 
 SEED_A=1000
+
+echo "=== Starting Isolated N=100 Sweep ==="
+
 SEED_B=2000
 
         $SOLVER --study --method "$METHOD" --R "$R" --N "$N" \
