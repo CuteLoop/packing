@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -O3 -std=c11 -Wall -Wextra -Iinclude -fopenmp
-LDFLAGS = -lm -fopenmp
+LDFLAGS = -lm -fopenmp -ldl
 
 SRCDIR = src
 TESTDIR = tests
