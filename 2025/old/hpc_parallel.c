@@ -1215,6 +1215,71 @@ static int write_best_svg(const char *path, const State *s, double best_feas,
     return 1;
 }
 
+static void save_history_snapshot(const char *stage, int event_idx,
+                                  State *s, double feas_tol,
+                                  uint64_t seed, uint64_t run_id, const char *prefix,
+                                  double run_start_time,
+                                  int *good_hits_io,
+                                  double *first_good_time_io,
+                                  double *last_good_time_io)
+{
+    if (!stage || !prefix) return;
+
+    ensure_dir("csv/history");
+    ensure_dir("img/history");
+
+    Totals t = compute_totals_full_grid(s);
+    double feas = feasibility_metric(&t);
+    int no_overlap = (t.overlap_total <= feas_tol);
+    int feasible = (feas <= feas_tol);
+
+    double tnow = now_seconds();
+    long long unix_ts = (long long)tnow;
+    double elapsed = tnow - run_start_time;
+
+    char csv_path[512], svg_path[512], log_path[512];
+    snprintf(csv_path, sizeof(csv_path),
+             "csv/history/%s_%s_%s_%s_e%06d_t%lld_N%03d.csv",
+             prefix, stage,
+             no_overlap ? "noov" : "ov",
+             feasible ? "feas" : "infeas",
+             event_idx, unix_ts, s->N);
+    snprintf(svg_path, sizeof(svg_path),
+             "img/history/%s_%s_%s_%s_e%06d_t%lld_N%03d.svg",
+             prefix, stage,
+             no_overlap ? "noov" : "ov",
+             feasible ? "feas" : "infeas",
+             event_idx, unix_ts, s->N);
+
+    (void)write_polys_csv(csv_path, s, feas, seed, run_id, prefix);
+    (void)write_best_svg(svg_path, s, feas, 1100, 1100, 40.0, prefix, run_id);
+
+    if (feasible && good_hits_io && first_good_time_io && last_good_time_io) {
+        if (*good_hits_io == 0) *first_good_time_io = elapsed;
+        *last_good_time_io = elapsed;
+        (*good_hits_io)++;
+    }
+
+    snprintf(log_path, sizeof(log_path), "logs/%s_history_log.csv", prefix);
+    int fresh = !file_exists(log_path);
+    FILE *f = fopen(log_path, "a");
+    if (f) {
+        if (fresh) {
+            fprintf(f,
+                    "event_idx,unix_ts,elapsed_sec,stage,L,overlap,outside,feas,no_overlap,feasible,csv_path,svg_path\n");
+        }
+        fprintf(f,
+                "%d,%lld,%.6f,%s,%.17g,%.17g,%.17g,%.17g,%d,%d,%s,%s\n",
+                event_idx, unix_ts, elapsed, stage, s->L,
+                t.overlap_total, t.out_total, feas,
+                no_overlap, feasible, csv_path, svg_path);
+        fclose(f);
+    }
+
+    printf("[history] stage=%s idx=%d t=%.0fs L=%.12g feas=%.3e noov=%d feasible=%d\n",
+           stage, event_idx, elapsed, s->L, feas, no_overlap, feasible);
+}
+
 // ---------------- Feasibility helpers ----------------
 
 static inline int is_feasible(double feas, double tol) { return (feas <= tol); }
@@ -1488,6 +1553,11 @@ static Config parse_args(int argc, char **argv) {
 
 int main(int argc, char **argv) {
     Config cfg = parse_args(argc, argv);
+    const double run_start_time = now_seconds();
+    int history_event_idx = 0;
+    int good_hits = 0;
+    double first_good_time = -1.0;
+    double last_good_time = -1.0;
 
     // Install signal handlers (Slurm sends SIGTERM on time limit; user may send SIGINT).
     signal(SIGTERM, on_signal_request_stop);
@@ -1670,10 +1740,15 @@ int main(int argc, char **argv) {
     update_all(&s);
     rebuild_grid(&s);
 
-    best_snapshot_update(&s, feas0);
-    maybe_stop_and_flush(&s, "after initial pack");
-
     int feas0_flag = is_feasible(feas0, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
+    if (feas0_flag) best_snapshot_update(&s, feas0);
+
+    save_history_snapshot("initial", history_event_idx++,
+                          &s, feas_tol,
+                          cfg.seed, cfg.run_id, cfg.out_prefix,
+                          run_start_time,
+                          &good_hits, &first_good_time, &last_good_time);
+    maybe_stop_and_flush(&s, "after initial pack");
 
     printf("Initial result: L=%.12g feas=%.3e (%s)\n",
            s.L, feas0, feas0_flag ? "FEASIBLE" : "INFEASIBLE");
@@ -1723,6 +1798,11 @@ int main(int argc, char **argv) {
                 best_feas_high = feas;
                 for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
                 best_snapshot_update(&s, feas);
+                save_history_snapshot("bracket_shrink_feas", history_event_idx++,
+                                      &s, feas_tol,
+                                      cfg.seed, cfg.run_id, cfg.out_prefix,
+                                      run_start_time,
+                                      &good_hits, &first_good_time, &last_good_time);
                 L_curr = s.L;
             } else {
                 // SA-declared infeasible lower bracket. Keep it (tighter than area bound),
@@ -1774,6 +1854,11 @@ int main(int argc, char **argv) {
                 best_feas_high = feas;
                 for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
                 best_snapshot_update(&s, feas);
+                save_history_snapshot("bracket_grow_feas", history_event_idx++,
+                                      &s, feas_tol,
+                                      cfg.seed, cfg.run_id, cfg.out_prefix,
+                                      run_start_time,
+                                      &good_hits, &first_good_time, &last_good_time);
                 found_feas = 1;
                 break;
             } else {
@@ -1866,6 +1951,11 @@ int main(int argc, char **argv) {
             best_feas_high = feas;
             for (int i = 0; i < N; i++) { best_high_cx[i] = s.cx[i]; best_high_cy[i] = s.cy[i]; best_high_th[i] = s.th[i]; }
             best_snapshot_update(&s, feas);
+            save_history_snapshot("bisect_feas", history_event_idx++,
+                                  &s, feas_tol,
+                                  cfg.seed, cfg.run_id, cfg.out_prefix,
+                                  run_start_time,
+                                  &good_hits, &first_good_time, &last_good_time);
         } else {
             L_low = L_mid;
 
@@ -1890,17 +1980,29 @@ int main(int argc, char **argv) {
     printf("L=%.12g ov=%.6e out=%.6e feas=%.6e (tol=%.1e)\n",
            s.L, final_tot.overlap_total, final_tot.out_total, final_feas, feas_tol);
 
-    // Always write current best after bisection
-    {
+    int final_feasible_flag = is_feasible(final_feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
+    if (final_feasible_flag) {
         char csv_path[256], svg_path[256];
         snprintf(csv_path, sizeof(csv_path), "csv/%s_best_polys_N%03d.csv", cfg.out_prefix, cfg.N);
         snprintf(svg_path, sizeof(svg_path), "img/%s_best_N%03d.svg", cfg.out_prefix, cfg.N);
         write_polys_csv(csv_path, &s, final_feas, cfg.seed, cfg.run_id, cfg.out_prefix);
         write_best_svg(svg_path, &s, final_feas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
         printf("Wrote best configuration to %s and %s\n", csv_path, svg_path);
+        best_snapshot_update(&s, final_feas);
+    } else {
+        char badcsv[256], badsvg[256];
+        snprintf(badcsv, sizeof(badcsv), "csv/%s_candidate_infeas_N%03d.csv", cfg.out_prefix, cfg.N);
+        snprintf(badsvg, sizeof(badsvg), "img/%s_candidate_infeas_N%03d.svg", cfg.out_prefix, cfg.N);
+        write_polys_csv(badcsv, &s, final_feas, cfg.seed, cfg.run_id, cfg.out_prefix);
+        write_best_svg(badsvg, &s, final_feas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
+        printf("WARNING: post-bisect state is infeasible; wrote candidate to %s and %s\n", badcsv, badsvg);
     }
 
-    best_snapshot_update(&s, final_feas);
+    save_history_snapshot("post_bisect", history_event_idx++,
+                          &s, feas_tol,
+                          cfg.seed, cfg.run_id, cfg.out_prefix,
+                          run_start_time,
+                          &good_hits, &first_good_time, &last_good_time);
     maybe_stop_and_flush(&s, "after bisection write");
 
     // ---------------- Long-running shrink search ----------------
@@ -1960,7 +2062,17 @@ int main(int argc, char **argv) {
             update_all(&s);
             rebuild_grid(&s);
 
-            best_snapshot_update(&s, bestFeas);
+            Totals stop_tot = compute_totals_full_grid(&s);
+            double stop_feas = feasibility_metric(&stop_tot);
+            if (is_feasible(stop_feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas)) {
+                best_snapshot_update(&s, stop_feas);
+            }
+
+            save_history_snapshot("time_limit", history_event_idx++,
+                                  &s, feas_tol,
+                                  cfg.seed, cfg.run_id, cfg.out_prefix,
+                                  run_start_time,
+                                  &good_hits, &first_good_time, &last_good_time);
             best_snapshot_flush_files(&s);
             break;
         }
@@ -1971,11 +2083,25 @@ int main(int argc, char **argv) {
             update_all(&s);
             rebuild_grid(&s);
 
+            Totals ck_tot = compute_totals_full_grid(&s);
+            double ck_feas = feasibility_metric(&ck_tot);
+            int ck_feasible = is_feasible(ck_feas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
+
             char ccsv[256], csvg[256];
             snprintf(ccsv, sizeof(ccsv), "csv/%s_checkpoint_N%03d.csv", cfg.out_prefix, cfg.N);
             snprintf(csvg, sizeof(csvg), "img/%s_checkpoint_N%03d.svg", cfg.out_prefix, cfg.N);
-            write_polys_csv(ccsv, &s, bestFeas, cfg.seed, cfg.run_id, cfg.out_prefix);
-            write_best_svg(csvg, &s, bestFeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
+            if (ck_feasible) {
+                write_polys_csv(ccsv, &s, ck_feas, cfg.seed, cfg.run_id, cfg.out_prefix);
+                write_best_svg(csvg, &s, ck_feas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
+            } else {
+                printf("[ckpt] skipped canonical checkpoint write because current best has overlap/outside (feas=%.3e)\n", ck_feas);
+            }
+
+            save_history_snapshot("checkpoint", history_event_idx++,
+                                  &s, feas_tol,
+                                  cfg.seed, cfg.run_id, cfg.out_prefix,
+                                  run_start_time,
+                                  &good_hits, &first_good_time, &last_good_time);
 
             printf("[ckpt] t=%.0fs bestL=%.12g bestFeas=%.3e eps=%.3g\n",
                    (tnow - start_time), bestL, bestFeas, eps);
@@ -2049,7 +2175,12 @@ int main(int argc, char **argv) {
 
             printf("[improve] attempt=%d bestL=%.12g feas=%.3e eps=%.3g\n",
                    attempt, bestL, bestFeas, eps);
-                 best_snapshot_update(&s, bestFeas);
+                        best_snapshot_update(&s, bestFeas);
+                        save_history_snapshot("polish_improve", history_event_idx++,
+                                                                    &s, feas_tol,
+                                                                    cfg.seed, cfg.run_id, cfg.out_prefix,
+                                                                    run_start_time,
+                                                                    &good_hits, &first_good_time, &last_good_time);
         }
 
         if (total_in_window >= WINDOW) {
@@ -2080,14 +2211,36 @@ int main(int argc, char **argv) {
     printf("\n=== FINAL BEST (AFTER LONG RUN) ===\n");
     printf("bestL=%.12g ov=%.6e out=%.6e feas=%.6e\n", bestL, bt.overlap_total, bt.out_total, bfeas);
 
-    {
+    int final_polish_feasible = is_feasible(bfeas, feas_tol) && !provably_infeasible_by_area(s.L, L_area_infeas);
+    if (final_polish_feasible) {
         char bestcsv[256], bestsvg[256];
         snprintf(bestcsv, sizeof(bestcsv), "csv/%s_best_polys_N%03d.csv", cfg.out_prefix, cfg.N);
         snprintf(bestsvg, sizeof(bestsvg), "img/%s_best_N%03d.svg", cfg.out_prefix, cfg.N);
         write_polys_csv(bestcsv, &s, bfeas, cfg.seed, cfg.run_id, cfg.out_prefix);
         write_best_svg(bestsvg, &s, bfeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
         printf("Wrote best configuration to %s and %s\n", bestcsv, bestsvg);
+        best_snapshot_update(&s, bfeas);
+    } else {
+        char badcsv[256], badsvg[256];
+        snprintf(badcsv, sizeof(badcsv), "csv/%s_candidate_infeas_N%03d.csv", cfg.out_prefix, cfg.N);
+        snprintf(badsvg, sizeof(badsvg), "img/%s_candidate_infeas_N%03d.svg", cfg.out_prefix, cfg.N);
+        write_polys_csv(badcsv, &s, bfeas, cfg.seed, cfg.run_id, cfg.out_prefix);
+        write_best_svg(badsvg, &s, bfeas, 1100, 1100, 40.0, cfg.out_prefix, cfg.run_id);
+        printf("WARNING: final state is infeasible; wrote candidate to %s and %s\n", badcsv, badsvg);
     }
+
+    save_history_snapshot("final", history_event_idx++,
+                          &s, feas_tol,
+                          cfg.seed, cfg.run_id, cfg.out_prefix,
+                          run_start_time,
+                          &good_hits, &first_good_time, &last_good_time);
+
+    printf("\n=== GOOD-CONFIG SUMMARY ===\n");
+    printf("good_hits=%d first_good_t=%.2fs last_good_t=%.2fs\n",
+           good_hits,
+           (first_good_time >= 0.0 ? first_good_time : -1.0),
+           (last_good_time >= 0.0 ? last_good_time : -1.0));
+    printf("history log: logs/%s_history_log.csv\n", cfg.out_prefix);
 
     free(best_cx); free(best_cy); free(best_th);
     free(best2_cx); free(best2_cy); free(best2_th);
