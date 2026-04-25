@@ -52,6 +52,7 @@ CHECKPOINT_EVERY=600    # save every 10 min
 echo "N=${N}  SEED=${SEED}  PREFIX=${OUTPREFIX}"
 
 # ---------- run ----------
+T_START=$(date +%s)
 ./HPC_parallel_old "${N}" "${SEED}" \
     --run_id "${SLURM_ARRAY_TASK_ID}" \
     --out_prefix "${OUTPREFIX}" \
@@ -60,10 +61,32 @@ echo "N=${N}  SEED=${SEED}  PREFIX=${OUTPREFIX}"
     --trials_bracket 12 \
     --trials_bisect  10 \
     --trials_polish   8
+T_END=$(date +%s)
 
 echo "===== DONE ====="
-echo "Time: $(date)"
+echo "Time:     $(date)"
+ELAPSED=$(( T_END - T_START ))
 NNN="$(printf "%03d" "${N}")"
+BEST_CSV="csv/${OUTPREFIX}_best_polys_N${NNN}.csv"
+
+echo ""
+echo "======= BENCHMARK SUMMARY ======="
+echo "N:              ${N}"
+echo "Seed:           ${SEED}"
+echo "Task:           ${SLURM_ARRAY_TASK_ID}"
+echo "Wall time (s):  ${ELAPSED}"
+printf "Wall time:      %dh %02dm %02ds\n" $((ELAPSED/3600)) $(( (ELAPSED%3600)/60 )) $((ELAPSED%60))
+if [ -f "${BEST_CSV}" ]; then
+    BEST_L=$(grep '^#' "${BEST_CSV}" | grep -oE 'L=[0-9.eE+\-]+' | head -1 | cut -d= -f2)
+    echo "Best L:         ${BEST_L}"
+    python3 -c "N=${N}; area=0.245625; L=float('${BEST_L}'); print(f'Area eff:       {N*area/L**2:.6f}  (1.0 = theoretical min)')" 2>/dev/null || true
+else
+    echo "Best L:         (solver produced no output CSV)"
+fi
+TELEM="logs/${OUTPREFIX}_telemetry.csv"
+[ -f "${TELEM}" ] && echo "Telemetry log:  ${TELEM}" || true
+echo "================================="
+echo ""
 echo "--- Artifacts ---"
 ls -lh "csv/${OUTPREFIX}_best_polys_N${NNN}.csv"    2>/dev/null || echo "  (no best csv)"
 ls -lh "img/${OUTPREFIX}_best_N${NNN}.svg"           2>/dev/null || echo "  (no best svg)"
