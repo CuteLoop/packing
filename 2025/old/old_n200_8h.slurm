@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=old_n200_4h
+#SBATCH --job-name=old_n200_8h
 #SBATCH --account=ece569
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=logs/old_n200_%A_%a.out
 #SBATCH --error=logs/old_n200_%A_%a.err
 #SBATCH --array=1-2
@@ -46,7 +46,7 @@ echo "Compile OK: $(readlink -f HPC_parallel_old)"
 N=200
 SEED=$((12345 + SLURM_ARRAY_TASK_ID))
 OUTPREFIX="N${N}_job${SLURM_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
-TIME_LIMIT=14100
+TIME_LIMIT=28500
 CHECKPOINT_EVERY=600
 
 echo "N=${N}  SEED=${SEED}  PREFIX=${OUTPREFIX}"
