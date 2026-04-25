@@ -23,6 +23,18 @@ cd "$WORKDIR"
 
 mkdir -p logs out
 
+echo "===== PREFLIGHT ====="
+echo "HOSTNAME=$(hostname)"
+echo "WORKDIR=$WORKDIR"
+echo "SLURM_JOB_ID=${SLURM_JOB_ID:-none}"
+echo "SLURM_JOB_NUM_NODES=${SLURM_JOB_NUM_NODES:-none}"
+echo "SLURM_NTASKS=${SLURM_NTASKS:-none}"
+echo "SLURM_EXPORT_ENV=${SLURM_EXPORT_ENV:-unset}"
+echo "PATH=$PATH"
+which gcc || true
+which /bin/bash || true
+echo "====================="
+
 if command -v module >/dev/null 2>&1; then
     module purge >/dev/null 2>&1 || true
     module load gcc >/dev/null 2>&1 || true
@@ -52,6 +64,28 @@ echo "TIME_LIMIT:       ${TIME_LIMIT}"
 echo "CHECKPOINT_EVERY: ${CHECKPOINT_EVERY}"
 echo "RESERVE_CPUS:     ${RESERVE_CPUS}"
 echo "====================================="
+
+MANIFEST="logs/old_five_node_${SLURM_JOB_ID}_manifest.txt"
+{
+    echo "date=$(date -Is)"
+    echo "hostname=$(hostname)"
+    echo "workdir=$WORKDIR"
+    echo "slurm_job_id=${SLURM_JOB_ID:-none}"
+    echo "slurm_nodes=${SLURM_JOB_NUM_NODES:-none}"
+    echo "slurm_ntasks=${SLURM_NTASKS:-none}"
+    echo "slurm_export_env=${SLURM_EXPORT_ENV:-unset}"
+    echo "N=$N"
+    echo "RUNS_PER_NODE=$RUNS_PER_NODE"
+    echo "BASE_SEED=$BASE_SEED"
+    echo "TIME_LIMIT=$TIME_LIMIT"
+    echo "CHECKPOINT_EVERY=$CHECKPOINT_EVERY"
+    echo "RESERVE_CPUS=$RESERVE_CPUS"
+    git rev-parse HEAD 2>/dev/null | sed 's/^/git_head=/' || true
+    git diff --stat 2>/dev/null || true
+    module list 2>&1 || true
+    ulimit -a || true
+} > "$MANIFEST"
+echo "Wrote manifest: $MANIFEST"
 
 srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 --cpu-bind=none /bin/bash "$WORKDIR/five_node_worker.sh" \
     "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS"

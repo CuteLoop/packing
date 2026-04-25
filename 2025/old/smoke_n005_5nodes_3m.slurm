@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --exclusive
 #SBATCH --mem=16G
-#SBATCH --time=00:03:00
+#SBATCH --time=00:04:00
 #SBATCH --output=logs/old_smoke_n005_5n_3m_%j.out
 #SBATCH --error=logs/old_smoke_n005_5n_3m_%j.err
 

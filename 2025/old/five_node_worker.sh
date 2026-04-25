@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+require_nonempty() {
+    local name="$1"
+    local value="${!name:-}"
+    if [[ -z "$value" ]]; then
+        echo "ERROR: missing required variable/arg: $name" >&2
+        exit 2
+    fi
+}
+
 WORKDIR="${1:-${WORKDIR:-}}"
 N="${2:-${N:-}}"
 RUNS_PER_NODE="${3:-${RUNS_PER_NODE:-}}"
@@ -9,11 +18,13 @@ TIME_LIMIT="${5:-${TIME_LIMIT:-}}"
 CHECKPOINT_EVERY="${6:-${CHECKPOINT_EVERY:-}}"
 RESERVE_CPUS="${7:-${RESERVE_CPUS:-2}}"
 
-if [ -z "$WORKDIR" ] || [ -z "$N" ] || [ -z "$RUNS_PER_NODE" ] || [ -z "$BASE_SEED" ] || [ -z "$TIME_LIMIT" ] || [ -z "$CHECKPOINT_EVERY" ]; then
-    echo "ERROR: missing required arguments to five_node_worker.sh" >&2
-    echo "usage: five_node_worker.sh WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY [RESERVE_CPUS]" >&2
-    exit 2
-fi
+require_nonempty WORKDIR
+require_nonempty N
+require_nonempty RUNS_PER_NODE
+require_nonempty BASE_SEED
+require_nonempty TIME_LIMIT
+require_nonempty CHECKPOINT_EVERY
+require_nonempty RESERVE_CPUS
 
 cd "$WORKDIR"
 NODE_ID="${SLURM_NODEID}"
@@ -23,9 +34,10 @@ NODE_OUT_DIR="out/${NODE_TAG}"
 mkdir -p "$NODE_OUT_DIR/csv" "$NODE_OUT_DIR/img" "$NODE_OUT_DIR/logs" \
          "$NODE_OUT_DIR/csv/history" "$NODE_OUT_DIR/img/history"
 
-DETECTED_CPUS=$(nproc)
+DETECTED_CPUS="${SLURM_CPUS_ON_NODE:-$(nproc)}"
 WORKERS=$((DETECTED_CPUS - RESERVE_CPUS))
 if [ "$WORKERS" -lt 1 ]; then WORKERS=1; fi
+if [ "$RUNS_PER_NODE" -lt 1 ]; then RUNS_PER_NODE=1; fi
 
 echo "===== NODE LAUNCH ====="
 echo "Node ID:       $NODE_ID"
