@@ -1328,25 +1328,6 @@ static void best_snapshot_flush_files(State *s) {
     fflush(stderr);
 }
 
-static void maybe_stop_and_flush(State *s, const char *where) {
-    if (!g_stop_requested) return;
-
-    fprintf(stderr, "\n[signal] stop requested at: %s\n", (where ? where : "unknown"));
-    best_snapshot_flush_files(s);
-    fprintf(stderr, "[signal] flushed best snapshot and exiting.\n");
-    if (g_logger) {
-        // best-effort close logger before exiting on signal
-        // logger_close is defined below
-        // avoid heavy I/O here
-        // flush and close
-        // cast away const: g_logger is global
-        // call logger_close
-        extern void logger_close(void);
-        logger_close();
-    }
-    exit(0);
-}
-
 // ---------------- Simple run-time logger (telemetry + snapstats) ----------------
 
 typedef struct {
@@ -1358,6 +1339,19 @@ typedef struct {
 } Logger;
 
 static Logger *g_logger = NULL;
+
+static void maybe_stop_and_flush(State *s, const char *where) {
+    if (!g_stop_requested) return;
+
+    fprintf(stderr, "\n[signal] stop requested at: %s\n", (where ? where : "unknown"));
+    best_snapshot_flush_files(s);
+    fprintf(stderr, "[signal] flushed best snapshot and exiting.\n");
+    if (g_logger) {
+        if (g_logger->telemetry) { fflush(g_logger->telemetry); fclose(g_logger->telemetry); g_logger->telemetry = NULL; }
+        if (g_logger->snapstats) { fflush(g_logger->snapstats); fclose(g_logger->snapstats); g_logger->snapstats = NULL; }
+    }
+    exit(0);
+}
 
 static void logger_open(const char *prefix, uint64_t run_id, uint64_t seed, int N) {
     if (!prefix) return;
