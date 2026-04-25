@@ -17,6 +17,8 @@ BASE_SEED="${4:-${BASE_SEED:-}}"
 TIME_LIMIT="${5:-${TIME_LIMIT:-}}"
 CHECKPOINT_EVERY="${6:-${CHECKPOINT_EVERY:-}}"
 RESERVE_CPUS="${7:-${RESERVE_CPUS:-2}}"
+OUT_BASE="${8:-${OUT_BASE:-}}"
+RUN_TAG="${9:-${RUN_TAG:-}}"
 
 require_nonempty WORKDIR
 require_nonempty N
@@ -25,12 +27,14 @@ require_nonempty BASE_SEED
 require_nonempty TIME_LIMIT
 require_nonempty CHECKPOINT_EVERY
 require_nonempty RESERVE_CPUS
+if [[ -z "$RUN_TAG" ]]; then RUN_TAG="$(date +%Y%m%d_%H%M%S)_job${SLURM_JOB_ID:-unknown}"; fi
+if [[ -z "$OUT_BASE" ]]; then OUT_BASE="out/N$(printf '%03d' "$N")/${RUN_TAG}"; fi
 
 cd "$WORKDIR"
 NODE_ID="${SLURM_NODEID}"
 HOST_SHORT="$(hostname -s 2>/dev/null || hostname)"
 NODE_TAG="$(printf "node_%02d" "$NODE_ID")"
-NODE_OUT_DIR="out/${NODE_TAG}"
+NODE_OUT_DIR="${OUT_BASE}/${NODE_TAG}"
 mkdir -p "$NODE_OUT_DIR/csv" "$NODE_OUT_DIR/img" "$NODE_OUT_DIR/logs" \
          "$NODE_OUT_DIR/csv/history" "$NODE_OUT_DIR/img/history"
 
@@ -45,6 +49,7 @@ echo "Hostname:      $HOST_SHORT"
 echo "Detected CPUs: $DETECTED_CPUS"
 echo "Reserve CPUs:  $RESERVE_CPUS"
 echo "Workers:       $WORKERS"
+echo "Run tag:       $RUN_TAG"
 echo "Output dir:    $NODE_OUT_DIR"
 echo "======================="
 
@@ -52,7 +57,7 @@ run_one() {
     local local_idx="$1"
     local global_idx=$(( NODE_ID * RUNS_PER_NODE + local_idx ))
     local seed=$(( BASE_SEED + global_idx ))
-    local prefix="N${N}_job${SLURM_JOB_ID}_${NODE_TAG}_${HOST_SHORT}_w$(printf "%03d" "$local_idx")"
+    local prefix="N${N}_${RUN_TAG}_${NODE_TAG}_${HOST_SHORT}_w$(printf "%03d" "$local_idx")"
 
     (
         cd "$NODE_OUT_DIR"
@@ -65,7 +70,7 @@ run_one() {
 }
 
 export -f run_one
-export WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY SLURM_JOB_ID NODE_ID NODE_TAG HOST_SHORT
+export WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY SLURM_JOB_ID NODE_ID NODE_TAG HOST_SHORT RUN_TAG
 seq 1 "$RUNS_PER_NODE" | xargs -I{} -P "$WORKERS" /bin/bash -lc 'run_one "$@"' _ {}
 
 echo "===== NODE DONE ====="

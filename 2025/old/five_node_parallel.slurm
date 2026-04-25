@@ -53,6 +53,9 @@ BASE_SEED="${BASE_SEED:-12345}"
 TIME_LIMIT="${TIME_LIMIT:-14100}"
 CHECKPOINT_EVERY="${CHECKPOINT_EVERY:-600}"
 RESERVE_CPUS="${RESERVE_CPUS:-2}"
+RUN_TAG="${RUN_TAG:-$(date +%Y%m%d_%H%M%S)_job${SLURM_JOB_ID}}"
+OUT_BASE="out/N$(printf '%03d' "$N")/${RUN_TAG}"
+mkdir -p "$OUT_BASE"
 
 echo "===== FIVE-NODE PARALLEL CONFIG ====="
 echo "Job ID:           ${SLURM_JOB_ID}"
@@ -63,6 +66,8 @@ echo "BASE_SEED:        ${BASE_SEED}"
 echo "TIME_LIMIT:       ${TIME_LIMIT}"
 echo "CHECKPOINT_EVERY: ${CHECKPOINT_EVERY}"
 echo "RESERVE_CPUS:     ${RESERVE_CPUS}"
+echo "RUN_TAG:          ${RUN_TAG}"
+echo "OUT_BASE:         ${OUT_BASE}"
 echo "====================================="
 
 MANIFEST="logs/old_five_node_${SLURM_JOB_ID}_manifest.txt"
@@ -80,6 +85,8 @@ MANIFEST="logs/old_five_node_${SLURM_JOB_ID}_manifest.txt"
     echo "TIME_LIMIT=$TIME_LIMIT"
     echo "CHECKPOINT_EVERY=$CHECKPOINT_EVERY"
     echo "RESERVE_CPUS=$RESERVE_CPUS"
+    echo "RUN_TAG=$RUN_TAG"
+    echo "OUT_BASE=$OUT_BASE"
     git rev-parse HEAD 2>/dev/null | sed 's/^/git_head=/' || true
     git diff --stat 2>/dev/null || true
     module list 2>&1 || true
@@ -88,7 +95,25 @@ MANIFEST="logs/old_five_node_${SLURM_JOB_ID}_manifest.txt"
 echo "Wrote manifest: $MANIFEST"
 
 srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 --cpu-bind=none /bin/bash "$WORKDIR/five_node_worker.sh" \
-    "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS"
+    "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS" "$OUT_BASE" "$RUN_TAG"
+
+echo "===== OUTPUT SANITY ====="
+echo "OUT_BASE: $OUT_BASE"
+if [ -d "$OUT_BASE" ]; then
+    FILE_COUNT=$(find "$OUT_BASE" -type f | wc -l | awk '{print $1}')
+    NODE_DIRS=$(find "$OUT_BASE" -maxdepth 1 -type d -name 'node_*' | wc -l | awk '{print $1}')
+    HIST_COUNT=$(find "$OUT_BASE" -type f -name '*_history_log.csv' | wc -l | awk '{print $1}')
+    BEST_COUNT=$(find "$OUT_BASE" -type f -name '*_best_polys_N*.csv' | wc -l | awk '{print $1}')
+    echo "Node dirs:      $NODE_DIRS"
+    echo "File count:     $FILE_COUNT"
+    echo "History logs:   $HIST_COUNT"
+    echo "Best CSV files: $BEST_COUNT"
+    if [ "$FILE_COUNT" -eq 0 ]; then
+        echo "WARNING: OUT_BASE is empty. Check per-task .err logs and worker launch output above." >&2
+    fi
+else
+    echo "WARNING: OUT_BASE directory was not created: $OUT_BASE" >&2
+fi
 
 echo "===== ALL NODES DONE ====="
 echo "Time: $(date)"

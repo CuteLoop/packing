@@ -71,6 +71,12 @@ checkpoints/
 slurm-*.out
 slurm-*.err
 
+# old solver runtime artifacts
+2025/old/out/
+2025/old/logs/smoke_test_telemetry.csv
+2025/old/logs/smoke_test_snapstats.csv
+2025/old/logs/old_five_node_*_manifest.txt
+
 # =========================
 # Environment / secrets
 # =========================
