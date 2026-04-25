@@ -46,13 +46,72 @@ gcc -O3 -march=native -std=c11 -Wall -Wextra -pedantic \
 
 echo "Compile OK: $(readlink -f HPC_parallel_old)"
 
+parse_slurm_time_to_sec() {
+    local t="$1"
+    local d=0 h=0 m=0 s=0
+
+    # Slurm accepts minutes, minutes:seconds, hours:minutes:seconds, days-hours, days-hours:minutes,
+    # and days-hours:minutes:seconds. Parse common forms robustly.
+    if [[ "$t" =~ ^([0-9]+)-([0-9]{1,2}):([0-9]{2}):([0-9]{2})$ ]]; then
+        d="${BASH_REMATCH[1]}"; h="${BASH_REMATCH[2]}"; m="${BASH_REMATCH[3]}"; s="${BASH_REMATCH[4]}"
+        echo $((10#$d*86400 + 10#$h*3600 + 10#$m*60 + 10#$s)); return 0
+    fi
+    if [[ "$t" =~ ^([0-9]+)-([0-9]{1,2}):([0-9]{2})$ ]]; then
+        d="${BASH_REMATCH[1]}"; h="${BASH_REMATCH[2]}"; m="${BASH_REMATCH[3]}"
+        echo $((10#$d*86400 + 10#$h*3600 + 10#$m*60)); return 0
+    fi
+    if [[ "$t" =~ ^([0-9]+)-([0-9]{1,2})$ ]]; then
+        d="${BASH_REMATCH[1]}"; h="${BASH_REMATCH[2]}"
+        echo $((10#$d*86400 + 10#$h*3600)); return 0
+    fi
+    if [[ "$t" =~ ^([0-9]{1,2}):([0-9]{2}):([0-9]{2})$ ]]; then
+        h="${BASH_REMATCH[1]}"; m="${BASH_REMATCH[2]}"; s="${BASH_REMATCH[3]}"
+        echo $((10#$h*3600 + 10#$m*60 + 10#$s)); return 0
+    fi
+    if [[ "$t" =~ ^([0-9]{1,3}):([0-9]{2})$ ]]; then
+        m="${BASH_REMATCH[1]}"; s="${BASH_REMATCH[2]}"
+        echo $((10#$m*60 + 10#$s)); return 0
+    fi
+    if [[ "$t" =~ ^[0-9]+$ ]]; then
+        # Numeric value from Slurm env is minutes.
+        echo $((10#$t*60)); return 0
+    fi
+
+    return 1
+}
+
 # ---------- tunables (override via sbatch --export=...) ----------
 N="${N:-100}"
 RUNS_PER_NODE="${RUNS_PER_NODE:-64}"
 BASE_SEED="${BASE_SEED:-12345}"
-TIME_LIMIT="${TIME_LIMIT:-14100}"
+TIME_LIMIT="${TIME_LIMIT:-}"
 CHECKPOINT_EVERY="${CHECKPOINT_EVERY:-600}"
 RESERVE_CPUS="${RESERVE_CPUS:-2}"
+POSTPROC_CUSHION_SEC="${POSTPROC_CUSHION_SEC:-300}"
+WALLTIME_SEC="${WALLTIME_SEC:-}"
+
+if [ -z "$WALLTIME_SEC" ] && [ -n "${SLURM_TIMELIMIT:-}" ]; then
+    if parsed_walltime=$(parse_slurm_time_to_sec "$SLURM_TIMELIMIT"); then
+        WALLTIME_SEC="$parsed_walltime"
+    fi
+fi
+
+if [ -n "$WALLTIME_SEC" ] && [[ "$WALLTIME_SEC" =~ ^[0-9]+$ ]]; then
+    MAX_RUN_SEC=$((WALLTIME_SEC - POSTPROC_CUSHION_SEC))
+    if [ "$MAX_RUN_SEC" -lt 60 ]; then
+        echo "WARNING: walltime cushion leaves <60s for run. Using minimum TIME_LIMIT=60." >&2
+        MAX_RUN_SEC=60
+    fi
+
+    if [ -z "$TIME_LIMIT" ]; then
+        TIME_LIMIT="$MAX_RUN_SEC"
+    elif [ "$TIME_LIMIT" -gt "$MAX_RUN_SEC" ]; then
+        echo "WARNING: TIME_LIMIT=$TIME_LIMIT exceeds wall-cushion budget ($MAX_RUN_SEC). Clamping." >&2
+        TIME_LIMIT="$MAX_RUN_SEC"
+    fi
+fi
+
+TIME_LIMIT="${TIME_LIMIT:-14100}"
 RUN_TAG="${RUN_TAG:-$(date +%Y%m%d_%H%M%S)_job${SLURM_JOB_ID}}"
 OUT_BASE="out/N$(printf '%03d' "$N")/${RUN_TAG}"
 mkdir -p "$OUT_BASE"
@@ -63,6 +122,8 @@ echo "Nodes requested:  ${SLURM_JOB_NUM_NODES}"
 echo "N:                ${N}"
 echo "RUNS_PER_NODE:    ${RUNS_PER_NODE}"
 echo "BASE_SEED:        ${BASE_SEED}"
+echo "WALLTIME_SEC:     ${WALLTIME_SEC:-unknown}"
+echo "POSTPROC_CUSHION: ${POSTPROC_CUSHION_SEC}"
 echo "TIME_LIMIT:       ${TIME_LIMIT}"
 echo "CHECKPOINT_EVERY: ${CHECKPOINT_EVERY}"
 echo "RESERVE_CPUS:     ${RESERVE_CPUS}"
@@ -82,6 +143,8 @@ MANIFEST="logs/old_five_node_${SLURM_JOB_ID}_manifest.txt"
     echo "N=$N"
     echo "RUNS_PER_NODE=$RUNS_PER_NODE"
     echo "BASE_SEED=$BASE_SEED"
+    echo "WALLTIME_SEC=${WALLTIME_SEC:-unknown}"
+    echo "POSTPROC_CUSHION_SEC=$POSTPROC_CUSHION_SEC"
     echo "TIME_LIMIT=$TIME_LIMIT"
     echo "CHECKPOINT_EVERY=$CHECKPOINT_EVERY"
     echo "RESERVE_CPUS=$RESERVE_CPUS"

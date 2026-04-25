@@ -10,6 +10,7 @@ This document captures the key debug phases, symptoms, root causes, code changes
   - `five_node_worker.sh`
   - `one_node_parallel.slurm`
   - wrappers: `n020_5nodes_4h.slurm`, `n050_5nodes_4h.slurm`, `n100_5nodes_4h.slurm`, `n200_5nodes_8h.slurm`, `smoke_n005_5nodes_3m.slurm`, `smoke_n010_5nodes_3m.slurm`
+  - post-run tooling: `summarize_old_runs.py`
 
 ---
 
@@ -147,7 +148,7 @@ New launcher call pattern:
 
 ```bash
 srun ... /bin/bash "$WORKDIR/five_node_worker.sh" \
-    "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS"
+  "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS" "$OUT_BASE" "$RUN_TAG"
 ```
 
 Worker arg parse pattern:
@@ -160,6 +161,8 @@ BASE_SEED="${4:-${BASE_SEED:-}}"
 TIME_LIMIT="${5:-${TIME_LIMIT:-}}"
 CHECKPOINT_EVERY="${6:-${CHECKPOINT_EVERY:-}}"
 RESERVE_CPUS="${7:-${RESERVE_CPUS:-2}}"
+OUT_BASE="${8:-${OUT_BASE:-}}"
+RUN_TAG="${9:-${RUN_TAG:-}}"
 ```
 
 ---
@@ -174,16 +177,21 @@ RESERVE_CPUS="${7:-${RESERVE_CPUS:-2}}"
   - `--ntasks-per-node=1`
 - Uses exclusive nodes.
 - Compiles once on submit host context (shared FS binary) then runs worker on each node.
+- Creates per-submission run namespace:
+  - `RUN_TAG=<timestamp>_job<jobid>`
+  - `OUT_BASE=out/N###/<RUN_TAG>`
+- Writes a run manifest in `logs/old_five_node_<jobid>_manifest.txt`.
+- Prints an output sanity block at the end (node dir count, file count, history count, best count).
 
 ### `five_node_worker.sh`
 
 - One controller per node.
 - Creates node-separated output tree:
-  - `out/node_00`, `out/node_01`, ...
+  - `out/N###/<RUN_TAG>/node_00`, `out/N###/<RUN_TAG>/node_01`, ...
 - Computes worker fanout as:
 
 ```bash
-DETECTED_CPUS=$(nproc)
+DETECTED_CPUS=${SLURM_CPUS_ON_NODE:-$(nproc)}
 WORKERS=$((DETECTED_CPUS - RESERVE_CPUS))
 ```
 
@@ -194,7 +202,7 @@ WORKERS=$((DETECTED_CPUS - RESERVE_CPUS))
 Per-run prefix includes job and node identity:
 
 ```text
-N{N}_job{SLURM_JOB_ID}_{node_tag}_{hostname}_w{local_worker}
+N{N}_{RUN_TAG}_{node_tag}_{hostname}_w{local_worker}
 ```
 
 This enables per-node and per-run timeseries grouping.
@@ -215,7 +223,48 @@ Budgets:
 
 - N20/N50/N100: wall 4h, solver `TIME_LIMIT=14100`
 - N200: wall 8h, solver `TIME_LIMIT=28500`
-- smoke N5/N10: wall 3m, solver `TIME_LIMIT=180`
+- smoke N5/N10: wrapper filenames still contain `3m`, but scheduler wall is now 4m to reduce timeout risk; solver `TIME_LIMIT=180`.
+
+---
+
+## Phase 6: Time-limit cancellations on smoke runs
+
+### Symptom
+
+`logs/old_smoke_*.err` may show:
+
+```text
+*** JOB <id> ... CANCELLED ... DUE TO TIME LIMIT ***
+```
+
+### Root cause
+
+- Tight smoke walltime budget can be exhausted by compile + launch + node startup jitter.
+- This is independent of solver correctness and independent of `.gitignore`.
+
+### Mitigations
+
+- Increased smoke walltime to 4 minutes in smoke wrappers.
+- Kept solver internal `TIME_LIMIT=180` for smoke behavior consistency.
+- If needed, submit with lower fanout for smoke validation:
+
+```bash
+sbatch --export=ALL,RUNS_PER_NODE=4 smoke_n005_5nodes_3m.slurm
+sbatch --export=ALL,RUNS_PER_NODE=4 smoke_n010_5nodes_3m.slurm
+```
+
+---
+
+## Artifact hygiene (`.gitignore`)
+
+Ignored runtime outputs now include:
+
+- `2025/old/out/`
+- `2025/old/logs/smoke_test_telemetry.csv`
+- `2025/old/logs/smoke_test_snapstats.csv`
+- `2025/old/logs/old_five_node_*_manifest.txt`
+
+Note: `.gitignore` only affects untracked files. If any artifact was already tracked, remove it from index once with `git rm --cached <path>`.
 
 ---
 
@@ -240,6 +289,13 @@ sbatch smoke_n005_5nodes_3m.slurm
 sbatch smoke_n010_5nodes_3m.slurm
 ```
 
+Optional lower fanout smoke:
+
+```bash
+sbatch --export=ALL,RUNS_PER_NODE=4 smoke_n005_5nodes_3m.slurm
+sbatch --export=ALL,RUNS_PER_NODE=4 smoke_n010_5nodes_3m.slurm
+```
+
 2. Verify no old fatal signatures:
 
 ```bash
@@ -258,10 +314,10 @@ Expected: around 5 per job.
 4. Verify per-node outputs:
 
 ```bash
-find out -maxdepth 2 -type d | sort
+find out -maxdepth 4 -type d | sort
 ```
 
-Expect `out/node_00` ... `out/node_04`.
+Expect `out/N###/<RUN_TAG>/node_00` ... `node_04`.
 
 5. Verify solver artifacts appear under each node folder:
 

@@ -12,7 +12,7 @@
 #SBATCH --array=1-2%2
 #SBATCH --signal=B:TERM@120
 
-# Old monolithic solver (hpc_parallel.c) — N=200, 4-hour wall time
+# Old monolithic solver (hpc_parallel.c) — N=200, 8-hour wall time
 # Array tasks provide seed diversity (2 independent runs)
 
 set -euo pipefail
@@ -46,10 +46,16 @@ echo "Compile OK: $(readlink -f HPC_parallel_old)"
 N=200
 SEED=$((12345 + SLURM_ARRAY_TASK_ID))
 OUTPREFIX="N${N}_job${SLURM_JOB_ID}_task${SLURM_ARRAY_TASK_ID}"
-TIME_LIMIT=28500
+WALLTIME_SEC=28800
+POSTPROC_CUSHION_SEC="${POSTPROC_CUSHION_SEC:-300}"
+TIME_LIMIT="${TIME_LIMIT:-28500}"
+MAX_RUN_SEC=$((WALLTIME_SEC - POSTPROC_CUSHION_SEC))
+if [ "$MAX_RUN_SEC" -lt 60 ]; then MAX_RUN_SEC=60; fi
+if [ "$TIME_LIMIT" -gt "$MAX_RUN_SEC" ]; then TIME_LIMIT="$MAX_RUN_SEC"; fi
 CHECKPOINT_EVERY=600
 
 echo "N=${N}  SEED=${SEED}  PREFIX=${OUTPREFIX}"
+echo "WALLTIME_SEC=${WALLTIME_SEC}  CUSHION=${POSTPROC_CUSHION_SEC}  TIME_LIMIT=${TIME_LIMIT}"
 
 # ---------- run ----------
 T_START=$(date +%s)

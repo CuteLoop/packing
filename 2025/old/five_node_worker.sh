@@ -38,7 +38,25 @@ NODE_OUT_DIR="${OUT_BASE}/${NODE_TAG}"
 mkdir -p "$NODE_OUT_DIR/csv" "$NODE_OUT_DIR/img" "$NODE_OUT_DIR/logs" \
          "$NODE_OUT_DIR/csv/history" "$NODE_OUT_DIR/img/history"
 
-DETECTED_CPUS="${SLURM_CPUS_ON_NODE:-$(nproc)}"
+# CPU accounting can vary by cluster config; take the largest sane signal.
+CPUS_FROM_ON_NODE="${SLURM_CPUS_ON_NODE:-}"
+CPUS_FROM_JOB_NODE="${SLURM_JOB_CPUS_PER_NODE:-}"
+CPUS_FROM_NPROC="$(nproc 2>/dev/null || echo 1)"
+
+# Parse first numeric token from values like "128(x5)" or "128,128,128".
+if [[ "$CPUS_FROM_JOB_NODE" =~ ^([0-9]+) ]]; then
+    CPUS_FROM_JOB_NODE="${BASH_REMATCH[1]}"
+else
+    CPUS_FROM_JOB_NODE=""
+fi
+
+DETECTED_CPUS=1
+for candidate in "$CPUS_FROM_ON_NODE" "$CPUS_FROM_JOB_NODE" "$CPUS_FROM_NPROC"; do
+    if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" -gt "$DETECTED_CPUS" ]; then
+        DETECTED_CPUS="$candidate"
+    fi
+done
+
 WORKERS=$((DETECTED_CPUS - RESERVE_CPUS))
 if [ "$WORKERS" -lt 1 ]; then WORKERS=1; fi
 if [ "$RUNS_PER_NODE" -lt 1 ]; then RUNS_PER_NODE=1; fi
@@ -47,6 +65,8 @@ echo "===== NODE LAUNCH ====="
 echo "Node ID:       $NODE_ID"
 echo "Hostname:      $HOST_SHORT"
 echo "Detected CPUs: $DETECTED_CPUS"
+echo "SLURM_CPUS_ON_NODE: ${SLURM_CPUS_ON_NODE:-unset}"
+echo "SLURM_JOB_CPUS_PER_NODE: ${SLURM_JOB_CPUS_PER_NODE:-unset}"
 echo "Reserve CPUs:  $RESERVE_CPUS"
 echo "Workers:       $WORKERS"
 echo "Run tag:       $RUN_TAG"
