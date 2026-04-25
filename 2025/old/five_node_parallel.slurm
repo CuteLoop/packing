@@ -53,9 +53,8 @@ echo "CHECKPOINT_EVERY: ${CHECKPOINT_EVERY}"
 echo "RESERVE_CPUS:     ${RESERVE_CPUS}"
 echo "====================================="
 
-export WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY RESERVE_CPUS
-
-srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 --cpu-bind=none /bin/bash "$WORKDIR/five_node_worker.sh"
+srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 --cpu-bind=none /bin/bash "$WORKDIR/five_node_worker.sh" \
+    "$WORKDIR" "$N" "$RUNS_PER_NODE" "$BASE_SEED" "$TIME_LIMIT" "$CHECKPOINT_EVERY" "$RESERVE_CPUS"
 
 echo "===== ALL NODES DONE ====="
 echo "Time: $(date)"

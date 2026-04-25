@@ -1,6 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
+WORKDIR="${1:-${WORKDIR:-}}"
+N="${2:-${N:-}}"
+RUNS_PER_NODE="${3:-${RUNS_PER_NODE:-}}"
+BASE_SEED="${4:-${BASE_SEED:-}}"
+TIME_LIMIT="${5:-${TIME_LIMIT:-}}"
+CHECKPOINT_EVERY="${6:-${CHECKPOINT_EVERY:-}}"
+RESERVE_CPUS="${7:-${RESERVE_CPUS:-2}}"
+
+if [ -z "$WORKDIR" ] || [ -z "$N" ] || [ -z "$RUNS_PER_NODE" ] || [ -z "$BASE_SEED" ] || [ -z "$TIME_LIMIT" ] || [ -z "$CHECKPOINT_EVERY" ]; then
+    echo "ERROR: missing required arguments to five_node_worker.sh" >&2
+    echo "usage: five_node_worker.sh WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY [RESERVE_CPUS]" >&2
+    exit 2
+fi
+
 cd "$WORKDIR"
 NODE_ID="${SLURM_NODEID}"
 HOST_SHORT="$(hostname -s 2>/dev/null || hostname)"
