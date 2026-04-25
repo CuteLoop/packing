@@ -62,6 +62,13 @@ BisectionResult bisection_run(const StudyConfig *cfg, method_runner_fn runner) {
     int feasible_ever = 0;
     double best_energy_global = 1e30;
 
+    /* Track best-energy state even when not feasible, for SVG output */
+    ReplicaState best_nonfeas_state;
+    memset(&best_nonfeas_state, 0, sizeof(best_nonfeas_state));
+    int have_best_nonfeas = 0;
+    double best_nonfeas_L = NAN;
+    double best_nonfeas_energy = 1e30;
+
     Workspace repair_ws;
     double cell = base_bounding_radius() * 2.0;
     workspace_init(&repair_ws, N, L_hi, cell);
@@ -149,6 +156,14 @@ BisectionResult bisection_run(const StudyConfig *cfg, method_runner_fn runner) {
             best_energy_global = res.min_energy;
         }
 
+        /* Track best non-feasible state for SVG output when no feasible found */
+        if (!res.feasible && res.has_state && res.min_energy < best_nonfeas_energy) {
+            best_nonfeas_energy = res.min_energy;
+            best_nonfeas_state = res.best_state;
+            best_nonfeas_L = L_mid;
+            have_best_nonfeas = 1;
+        }
+
         if (res.feasible) {
             L_hi = L_mid;
             L_best = L_mid;
@@ -202,12 +217,15 @@ BisectionResult bisection_run(const StudyConfig *cfg, method_runner_fn runner) {
     fclose(f_log);
     workspace_free(&repair_ws);
 
-    result.L_best = feasible_ever ? L_best : L_hi;
+    result.L_best = feasible_ever ? L_best : (have_best_nonfeas ? best_nonfeas_L : L_hi);
     result.L_lo = L_lo;
     result.L_hi = L_hi;
     result.probes_done = probe_idx;
     result.feasible_found = feasible_ever;
-    if (have_warm) result.best_state = warm_state;
+    if (have_warm)
+        result.best_state = warm_state;
+    else if (have_best_nonfeas)
+        result.best_state = best_nonfeas_state;
 
     return result;
 }

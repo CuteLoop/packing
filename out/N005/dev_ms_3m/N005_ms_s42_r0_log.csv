@@ -1,0 +1,4 @@
+run_id,seed,method,N,R,wall_sec,probe_idx,L_current,best_energy,best_feas,feasible_ever,L_best,event
+0,42,ms,5,10,0.00,0,1.773133,1.000000e+30,0.000000e+00,0,,probe_start
+0,42,ms,5,10,0.00,0,1.773133,0.000000e+00,0.000000e+00,1,1.773133,probe_end
+0,42,ms,5,10,0.00,1,1.440670,0.000000e+00,0.000000e+00,1,1.773133,probe_start

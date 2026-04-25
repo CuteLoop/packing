@@ -15,6 +15,10 @@ typedef struct {
     double time_budget_sec;
     double eps_feas;
     Weights weights;
+    /* PT-specific tuning (0 = use default) */
+    double pt_Tmin;      /* cold-end temperature; default 1.0 */
+    double pt_Tmax;      /* hot-end temperature;  default 25.0 */
+    int    pt_K_epoch;   /* SA moves per replica per epoch; default 200*N */
 } StudyConfig;
 
 typedef struct {

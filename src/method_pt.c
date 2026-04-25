@@ -4,6 +4,7 @@
 #include "../include/geometry.h"
 #include "../include/utils.h"
 #include <omp.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -20,6 +21,16 @@ double pt_swap_accept_prob(double Ei, double Ej, double Ti, double Tj) {
     if (d >= 0.0) return 1.0;
     double a = exp(d);
     return a < 0.0 ? 0.0 : a;
+}
+
+/*
+ * Canonical PT exchange energy.
+ * Replica exchange must be computed from a common, temperature-independent
+ * energy across all replicas. Using a replica-local annealing objective can
+ * violate detailed balance and lead to pathological always-accept behavior.
+ */
+static double pt_exchange_energy(const ReplicaState *s) {
+    return s->overlap_penalty + s->outside_penalty;
 }
 
 static int replica_better_than(const ReplicaState *a, const ReplicaState *b) {
@@ -70,8 +81,8 @@ void runner_pt(
         return;
     }
 
-    double Tmin = 1.0;
-    double Tmax = 25.0;
+    double Tmin = (cfg->pt_Tmin > 0.0) ? cfg->pt_Tmin : 1.0;
+    double Tmax = (cfg->pt_Tmax > 0.0) ? cfg->pt_Tmax : 25.0;
     build_temp_ladder(temps, R, Tmin, Tmax);
 
     for (int r = 0; r < R; r++) {
@@ -84,6 +95,16 @@ void runner_pt(
             replica_init_random(&replicas[r], N, L, rseed, temps[r], r);
         }
         replicas[r].temp = temps[r];
+        /*
+         * PT BUG FIX: replica_init_random and replica_clone both leave step_xy
+         * and step_th at 0 (memset/copy from uninitialised source). run_sa_epoch
+         * uses r->step_xy/step_th directly as the move size, so zero step sizes
+         * mean every proposed move perturbs by exactly 0 -- replicas never move,
+         * all energies stay identical, and swap acceptance is always 1.
+         * Set sane defaults matching PhaseParams.step_xy_start / step_th_start.
+         */
+        if (replicas[r].step_xy <= 0.0) replicas[r].step_xy = 0.05;
+        if (replicas[r].step_th <= 0.0) replicas[r].step_th = 0.5;
     }
 
     int early_stop = 0;
@@ -94,6 +115,13 @@ void runner_pt(
     RNG swap_rng;
     rng_seed(&swap_rng, make_trial_seed(cfg->seed, cfg->run_id, (uint64_t)probe_idx * 4242ULL));
 
+    // Swap statistics
+    int swap_attempts = 0;
+    int swap_accepts = 0;
+#ifdef PT_DEBUG
+    int debug_logged_swap_this_probe = 0;
+#endif
+
 #pragma omp parallel
     {
         Workspace w;
@@ -102,12 +130,55 @@ void runner_pt(
 #pragma omp for schedule(static)
         for (int r = 0; r < R; r++) {
             rebuild_derived(&replicas[r], &w, N, L, cell);
+
+            /*
+             * PT diversification: when all replicas are cloned from the same
+             * warm_init, they start at identical positions. Apply a small
+             * per-polygon random perturbation using each replica's own RNG so
+             * that replicas explore different regions from the first epoch.
+             * Replica 0 is left unperturbed as the reference cold chain.
+             */
+            if (warm_init && r > 0) {
+                RNG div_rng;
+                div_rng.s = replicas[r].rng_s;
+                double scale = 0.05;
+                for (int k = 0; k < N; k++) {
+                    replicas[r].cx[k] += rng_uniform(&div_rng, -scale, scale);
+                    replicas[r].cy[k] += rng_uniform(&div_rng, -scale, scale);
+                    double dth = rng_uniform(&div_rng, -0.5, 0.5);
+                    replicas[r].th[k] = fmod(replicas[r].th[k] + dth + 2.0 * M_PI, 2.0 * M_PI);
+                }
+                replicas[r].rng_s = div_rng.s;
+                rebuild_derived(&replicas[r], &w, N, L, cell);
+            }
+
             evaluate_full(&replicas[r], &w, N, L, &cfg->weights, cfg->eps_feas);
         }
 
+#ifdef PT_DEBUG
+        if (probe_idx == 0) {
+#pragma omp single
+            {
+                printf("PT DEBUG INIT probe=%d R=%d\n", probe_idx, R);
+                for (int dbg_r = 0; dbg_r < R; dbg_r++) {
+                    double E = pt_exchange_energy(&replicas[dbg_r]);
+                    printf("PT DEBUG INIT r=%d T=%.4f step_xy=%.6f step_th=%.6f "
+                           "E=%.6f ov=%.6f out=%.6f cx0=%.4f cy0=%.4f th0=%.4f\n",
+                           dbg_r, replicas[dbg_r].temp,
+                           replicas[dbg_r].step_xy, replicas[dbg_r].step_th,
+                           E, replicas[dbg_r].overlap_penalty, replicas[dbg_r].outside_penalty,
+                           N > 0 ? replicas[dbg_r].cx[0] : 0.0,
+                           N > 0 ? replicas[dbg_r].cy[0] : 0.0,
+                           N > 0 ? replicas[dbg_r].th[0] : 0.0);
+                }
+            }
+        }
+#endif
+
         int parity = 0;
-        int K_epoch = 200 * N;
-        int K_chunk = 20 * N;
+        int K_epoch = (cfg->pt_K_epoch > 0) ? cfg->pt_K_epoch : 200 * N;
+        int K_chunk = K_epoch / 10;
+        if (K_chunk < 1) K_chunk = 1;
         if (K_chunk > K_epoch) K_chunk = K_epoch;
 
         while (1) {
@@ -141,6 +212,24 @@ void runner_pt(
 
                 replicas[r].temp = temps[r];
                 Weights local_w = cfg->weights;
+                /*
+                 * Rebuild the workspace from this replica's current positions
+                 * before local search. With R > num_threads a single thread
+                 * processes multiple replicas sequentially; without a rebuild
+                 * the workspace (grid, aabb, world) retains the previous
+                 * replica's geometry and evaluate_full would compute the wrong
+                 * energy for this replica.
+                 */
+                rebuild_derived(&replicas[r], &w, N, L, cell);
+                /*
+                 * Temperature dependency: pp.T_start = pp.T_end = temps[r],
+                 * so run_sa_epoch runs isothermally at this replica's ladder
+                 * temperature. The Metropolis criterion inside run_sa_epoch is
+                 * exp(-dE / temp) where temp = temps[r], giving each replica a
+                 * distinct acceptance rate. Higher-temperature replicas accept
+                 * uphill moves more readily, allowing barrier-crossing; the
+                 * cold replica (temps[0]) converges toward low-energy states.
+                 */
                 run_sa_epoch(&replicas[r], &w, N, L,
                              &local_w, cfg->eps_feas,
                              &pp, K_chunk, &early_stop);
@@ -215,18 +304,41 @@ void runner_pt(
 
             if (global_stop) break;
 
-#pragma omp single
+            #pragma omp single
             {
                 if (!confirmed_feasible && !global_stop) {
                     int start = parity ? 1 : 0;
+                    /* PT_DEBUG: first-swap log fires once per probe; flag is set on first log and never reset. */
+#ifdef PT_DEBUG
+                    if (probe_idx == 0 && !debug_logged_swap_this_probe) {
+                        printf("PT DEBUG PRE-SWAP probe=%d parity=%d all replicas:\n", probe_idx, parity);
+                        for (int dbg_r = 0; dbg_r < R; dbg_r++) {
+                            printf("  r=%d T=%.4f E=%.6f ov=%.6f out=%.6f cx0=%.4f cy0=%.4f th0=%.4f\n",
+                                   dbg_r, temps[dbg_r], pt_exchange_energy(&replicas[dbg_r]),
+                                   replicas[dbg_r].overlap_penalty, replicas[dbg_r].outside_penalty,
+                                   N > 0 ? replicas[dbg_r].cx[0] : 0.0,
+                                   N > 0 ? replicas[dbg_r].cy[0] : 0.0,
+                                   N > 0 ? replicas[dbg_r].th[0] : 0.0);
+                        }
+                    }
+#endif
                     for (int i = start; i + 1 < R; i += 2) {
                         int j = i + 1;
                         double Ti = temps[i];
                         double Tj = temps[j];
-                        double Ei = replicas[i].energy;
-                        double Ej = replicas[j].energy;
+                        double Ei = pt_exchange_energy(&replicas[i]);
+                        double Ej = pt_exchange_energy(&replicas[j]);
                         double acc = pt_swap_accept_prob(Ei, Ej, Ti, Tj);
-                        if (rng_u01(&swap_rng) < acc) {
+#ifdef PT_DEBUG
+                        double beta_i = (Ti > 0.0) ? (1.0 / Ti) : 0.0;
+                        double beta_j = (Tj > 0.0) ? (1.0 / Tj) : 0.0;
+                        double delta = (beta_i - beta_j) * (Ej - Ei);
+#endif
+                        double u = rng_u01(&swap_rng);
+                        int accepted = (u < acc);
+                        swap_attempts++;
+                        if (accepted) {
+                            swap_accepts++;
                             ReplicaState tmp = replicas[i];
                             replicas[i] = replicas[j];
                             replicas[j] = tmp;
@@ -235,6 +347,14 @@ void runner_pt(
                             replicas[i].temp = temps[i];
                             replicas[j].temp = temps[j];
                         }
+#ifdef PT_DEBUG
+                        if (!debug_logged_swap_this_probe) {
+                            printf("PT DEBUG probe=%d parity=%d pair=(%d,%d) Ti=%.6f Tj=%.6f Ei=%.6f Ej=%.6f beta_i=%.6f beta_j=%.6f delta=%.6f acc=%.6f u=%.6f accepted=%d\n",
+                                   probe_idx, parity, i, j, Ti, Tj, Ei, Ej,
+                                   beta_i, beta_j, delta, acc, u, accepted);
+                            debug_logged_swap_this_probe = 1;
+                        }
+#endif
                     }
                     parity = 1 - parity;
                 }
@@ -253,8 +373,9 @@ void runner_pt(
     global_best.replica_id = -1;
 
     for (int r = 0; r < R; r++) {
-        if (replicas[r].energy < global_min_energy)
-            global_min_energy = replicas[r].energy;
+        double ex = pt_exchange_energy(&replicas[r]);
+        if (ex < global_min_energy)
+            global_min_energy = ex;
         double fm = replicas[r].overlap_penalty + replicas[r].outside_penalty;
         if (fm < global_min_feas)
             global_min_feas = fm;
@@ -274,6 +395,41 @@ void runner_pt(
     out->has_state = (global_best.replica_id >= 0);
     out->slice_used_sec = now_seconds() - t_start;
     out->resample_events = 0;
+
+#ifdef PT_DEBUG
+    {
+        double minE = 1e300, maxE = -1e300, sumE = 0.0;
+        int feasible_count = 0;
+        int distinct_energy_count = 0;
+        for (int r = 0; r < R; r++) {
+            double E = pt_exchange_energy(&replicas[r]);
+            if (E < minE) minE = E;
+            if (E > maxE) maxE = E;
+            sumE += E;
+            if (replicas[r].is_feasible) feasible_count++;
+            int seen = 0;
+            for (int k = 0; k < r; k++) {
+                double Ek = pt_exchange_energy(&replicas[k]);
+                if (fabs(E - Ek) < 1e-12) {
+                    seen = 1;
+                    break;
+                }
+            }
+            if (!seen) distinct_energy_count++;
+        }
+        double meanE = (R > 0) ? (sumE / (double)R) : 0.0;
+        double coldE = (R > 0) ? pt_exchange_energy(&replicas[0]) : 0.0;
+        double accept_rate = (swap_attempts > 0) ? ((double)swap_accepts / (double)swap_attempts) : 0.0;
+        printf("PT DEBUG SUMMARY probe=%d attempts=%d accepts=%d rate=%.6f "
+               "minE=%.6f maxE=%.6f meanE=%.6f distinctE=%d "
+               "coldE=%.6f feasible_count=%d cold_feasible=%d\n",
+               probe_idx, swap_attempts, swap_accepts, accept_rate,
+               minE, maxE, meanE, distinct_energy_count,
+               coldE, feasible_count, (R > 0) ? replicas[0].is_feasible : 0);
+    }
+#else
+    printf("PT probe %d: swap_attempts=%d swap_accepts=%d\n", probe_idx, swap_attempts, swap_accepts);
+#endif
 
     free(replicas);
     free(temps);

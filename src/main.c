@@ -142,8 +142,12 @@ static void write_best_svg_study(const StudyConfig *cfg, const ReplicaState *r, 
         fprintf(f, "Z\" fill=\"rgba(0,0,255,0.2)\" stroke=\"black\" stroke-width=\"1\"/>\n");
     }
 
+    int feasible = (r->feas < cfg->eps_feas);
     fprintf(f, "<text x=\"20\" y=\"20\" font-family=\"monospace\">N=%d L=%.6f Feas=%.2e</text>\n",
             cfg->N, L_best, r->feas);
+    if (!feasible) {
+        fprintf(f, "<text x=\"20\" y=\"40\" font-family=\"monospace\" fill=\"red\" font-weight=\"bold\">INFEASIBLE (best-energy state)</text>\n");
+    }
     fprintf(f, "</svg>\n");
     fclose(f);
 }
@@ -160,6 +164,10 @@ static void usage_study(void) {
     fprintf(stderr, "  --run_type {smoke|graph|hero|gate_a|gate_b|gate_c|pilot|dev}\n");
     fprintf(stderr, "  [--out_prefix <str>]  (overrides auto-built path)\n");
     fprintf(stderr, "  [--mode graph|hero] [--save_best]\n");
+    fprintf(stderr, "  PT-specific (optional, defaults in brackets):\n");
+    fprintf(stderr, "  [--pt_Tmin <float>]    cold-end temperature [1.0]\n");
+    fprintf(stderr, "  [--pt_Tmax <float>]    hot-end  temperature [25.0]\n");
+    fprintf(stderr, "  [--pt_K_epoch <int>]   SA moves per replica per epoch [200*N]\n");
 }
 
 static void ensure_dir_recursive(const char *path) {
@@ -227,6 +235,12 @@ static int run_study_mode(int argc, char **argv) {
             save_best = 1;
         } else if (strcmp(argv[i], "--mode") == 0 && i + 1 < argc) {
             strncpy(mode, argv[++i], sizeof(mode) - 1);
+        } else if (strcmp(argv[i], "--pt_Tmin") == 0 && i + 1 < argc) {
+            cfg.pt_Tmin = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--pt_Tmax") == 0 && i + 1 < argc) {
+            cfg.pt_Tmax = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--pt_K_epoch") == 0 && i + 1 < argc) {
+            cfg.pt_K_epoch = atoi(argv[++i]);
         }
     }
 
@@ -310,7 +324,7 @@ static int run_study_mode(int argc, char **argv) {
                result.feasible_found ? result.L_best : -1.0,
                result.L_lo, result.L_hi);
 
-        if (save_best && result.feasible_found) {
+        if (save_best) {
             write_best_csv_study(&cfg, &result.best_state, result.L_best);
             write_best_svg_study(&cfg, &result.best_state, result.L_best);
             printf("Best state: %s_best_state.svg\n", cfg.out_prefix);
