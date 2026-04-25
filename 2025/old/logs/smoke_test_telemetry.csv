@@ -1,0 +1,4 @@
+# prefix=smoke_test run_id=0 seed=12345 N=5
+time_sec,bestL,bestFeas,eps,attempts,success_in_window,total_in_window
+# prefix=smoke_test run_id=0 seed=12345 N=5
+time_sec,bestL,bestFeas,eps,attempts,success_in_window,total_in_window

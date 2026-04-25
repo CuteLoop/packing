@@ -1,0 +1,4 @@
+# prefix=smoke_test run_id=0 seed=12345 N=5
+step,time_sec,info
+# prefix=smoke_test run_id=0 seed=12345 N=5
+step,time_sec,info
