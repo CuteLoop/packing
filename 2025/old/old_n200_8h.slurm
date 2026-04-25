@@ -9,7 +9,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/old_n200_%A_%a.out
 #SBATCH --error=logs/old_n200_%A_%a.err
-#SBATCH --array=1-2
+#SBATCH --array=1-2%2
 #SBATCH --signal=B:TERM@120
 
 # Old monolithic solver (hpc_parallel.c) — N=200, 4-hour wall time
