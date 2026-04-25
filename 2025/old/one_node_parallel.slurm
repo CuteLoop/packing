@@ -78,7 +78,7 @@ export -f run_one
 export N BASE_SEED SLURM_JOB_ID TIME_LIMIT CHECKPOINT_EVERY
 
 # Launch RUNS independent seeds with a max of WORKERS concurrent processes.
-seq 1 "$RUNS" | xargs -I{} -P "$WORKERS" bash -lc 'run_one "$@"' _ {}
+seq 1 "$RUNS" | xargs -I{} -P "$WORKERS" /bin/bash -lc 'run_one "$@"' _ {}
 
 echo "===== DONE ====="
 echo "Time: $(date)"

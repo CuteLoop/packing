@@ -20,4 +20,4 @@ export TIME_LIMIT=180
 export CHECKPOINT_EVERY="${CHECKPOINT_EVERY:-60}"
 export RESERVE_CPUS="${RESERVE_CPUS:-2}"
 
-bash five_node_parallel.slurm
+/bin/bash five_node_parallel.slurm

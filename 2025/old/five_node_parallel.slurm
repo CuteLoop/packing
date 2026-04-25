@@ -55,7 +55,7 @@ echo "====================================="
 
 export WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY RESERVE_CPUS
 
-srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 bash -lc '
+srun --ntasks="${SLURM_JOB_NUM_NODES}" --ntasks-per-node=1 /bin/bash -lc '
 set -euo pipefail
 
 cd "$WORKDIR"
@@ -100,7 +100,7 @@ run_one() {
 
 export -f run_one
 export WORKDIR N RUNS_PER_NODE BASE_SEED TIME_LIMIT CHECKPOINT_EVERY SLURM_JOB_ID NODE_ID NODE_TAG HOST_SHORT
-seq 1 "$RUNS_PER_NODE" | xargs -I{} -P "$WORKERS" bash -lc "run_one \"\$@\"" _ {}
+seq 1 "$RUNS_PER_NODE" | xargs -I{} -P "$WORKERS" /bin/bash -lc "run_one \"\$@\"" _ {}
 
 echo "===== NODE DONE ====="
 echo "Node ID:    $NODE_ID"
