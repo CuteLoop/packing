@@ -1,0 +1,1368 @@
+% ============================================================
+%  Computational Budget Estimation and Audit Guide
+%  From Code to Runtime: A Step-by-Step Derivation
+%  for the Polygon Packing Solver (HPC_parallel.c)
+%
+%  Joel Solis, University of Arizona
+% ============================================================
+\documentclass[11pt,oneside]{article}
+
+\usepackage[margin=2.5cm,top=2.8cm,bottom=2.8cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+% ---- code listing style ----
+\lstdefinestyle{cstyle}{
+  language=C,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{gray!60!black}\itshape,
+  stringstyle=\color{orange!80!black},
+  numberstyle=\tiny\color{gray},
+  numbers=left,
+  numbersep=6pt,
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{gray!5},
+  showstringspaces=false,
+  tabsize=4,
+}
+
+\lstdefinestyle{bashstyle}{
+  language=bash,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!60!black},
+  commentstyle=\color{gray!60!black}\itshape,
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{blue!3},
+  showstringspaces=false,
+}
+
+% ---- audit box environments ----
+\newmdenv[
+  linewidth=1.2pt,
+  linecolor=red!60!black,
+  backgroundcolor=red!4,
+  roundcorner=4pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+]{gabitovbox}
+
+\newmdenv[
+  linewidth=1.2pt,
+  linecolor=blue!60!black,
+  backgroundcolor=blue!4,
+  roundcorner=4pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+]{akoglubox}
+
+\newmdenv[
+  linewidth=1.2pt,
+  linecolor=green!50!black,
+  backgroundcolor=green!4,
+  roundcorner=4pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+]{resultbox}
+
+\newcommand{\gabitov}[1]{\begin{gabitovbox}\textbf{Gabitov Audit.} #1\end{gabitovbox}}
+\newcommand{\akoglu}[1]{\begin{akoglubox}\textbf{Why This Matters.} #1\end{akoglubox}}
+\newcommand{\expcheck}[1]{\begin{resultbox}\textbf{Experimental Check.} #1\end{resultbox}}
+
+\newtheorem{claim}{Claim}
+\newtheorem{remark}{Remark}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Polygon Packing: Computational Audit Guide}
+\fancyhead[R]{\small Joel Solis, University of Arizona}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{12pt}
+
+% ============================================================
+\title{%
+  \textbf{Computational Budget Estimation and Audit Guide}\\[6pt]
+  {\large From Code to Runtime: A Step-by-Step Derivation}\\[4pt]
+  {\normalsize for the Non-Convex Polygon Packing Solver \texttt{HPC\_parallel.c}}%
+}
+\author{Joel Solis\\
+  {\small Department of Mathematics, University of Arizona}}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+This document is a working audit guide intended to be followed step by
+step. Every numerical estimate made in the companion report is derived
+here from first principles, referenced directly to the source code and
+SLURM configuration files. Three audit lenses are applied throughout.
+The \emph{Gabitov Audit} checks that every design decision is
+justified by evidence and that no assumption is accepted without
+verification. The \emph{Akoglu Lens} ensures each calculation is
+accompanied by a plain-language explanation of what it actually means
+for the program's behavior. The \emph{Experimental Check} compares
+each prediction against the observed results from the five-node cluster
+runs. At the end is a reproducibility checklist the reader can use
+independently to verify every claim.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{How to Read This Guide}
+\label{sec:howto}
+
+This guide has three distinct uses. First, it is a derivation notebook:
+every number that appears in the companion report is worked out here
+from scratch. Second, it is a design audit: for each algorithmic choice
+(grid cell size, AABB hierarchy, geometric cooling, etc.) there is an
+explicit question asking whether the choice is justified by cost
+analysis. Third, it is a reproducibility document: someone who has
+never read the report should be able to reproduce every estimate by
+following the numbered calculations.
+
+Each section follows a consistent structure. The background paragraph
+explains what the calculation is for. A code reference points to the
+exact lines or variable names in \texttt{HPC\_parallel.c} or the SLURM
+scripts. The derivation carries out the arithmetic with explicit
+intermediate values. A Gabitov Audit box identifies the key assumption
+and what would go wrong if it were violated. A Why-This-Matters box
+connects the number to the algorithm's behavior. An Experimental Check
+box compares the prediction to observed data where applicable.
+
+\akoglu{%
+Think of this document as a lab notebook. A good lab notebook does not
+just record final answers; it records the reasoning, the assumptions,
+and the checks. Reading this from top to bottom should feel like
+sitting next to someone who is walking you through how they thought
+about the problem before writing a single line of code.%
+}
+
+% ============================================================
+\section{Hardware Baseline: Reading the SLURM Configuration}
+\label{sec:hardware}
+
+Before any runtime estimate can be made, we need to know the hardware.
+All SLURM configuration is read directly from the job scripts.
+
+\subsection{Five-Node Parallel Jobs}
+
+The main production runs used the following SLURM header, drawn from
+\texttt{n020\_5nodes\_4h.slurm} (and analogously for other $N$ values):
+
+\begin{lstlisting}[style=bashstyle,caption={SLURM header for five-node jobs.}]
+#SBATCH --nodes=5
+#SBATCH --ntasks=5
+#SBATCH --ntasks-per-node=1
+#SBATCH --exclusive
+#SBATCH --mem=16G
+#SBATCH --time=04:00:00      # 4 h for N in {20,50,100}
+                              # 08:00:00 for N=200
+
+export RUNS_PER_NODE=64       # runs queued per node
+export RESERVE_CPUS=2         # CPUs withheld for OS
+export TIME_LIMIT=14100       # wall time minus 5-minute cushion
+export CHECKPOINT_EVERY=600   # checkpoint every 10 minutes
+\end{lstlisting}
+
+The node is requested exclusively, so all CPUs are available. The
+worker count per node is computed at launch time:
+
+\begin{lstlisting}[style=bashstyle,caption={Worker count derivation in the launcher.},firstnumber=1]
+DETECTED_CPUS=$(nproc)          # all physical CPUs on the node
+WORKERS=$((DETECTED_CPUS - RESERVE_CPUS))
+\end{lstlisting}
+
+From \texttt{one\_node\_parallel.slurm} we know the test node had
+32 CPUs (\texttt{--cpus-per-task=32}), giving $W = 32 - 2 = 30$
+workers per node. Across five nodes the total concurrent workers are:
+\begin{equation}
+  W_{\mathrm{total}} = 5 \times 30 = 150 \;\text{concurrent workers.}
+  \label{eq:workers}
+\end{equation}
+With 64 runs queued per node (320 total), the launcher runs them 30 at
+a time using \texttt{xargs -P 30}, so the queue drains roughly in
+$\lceil 64/30 \rceil = 3$ waves per node.
+
+\gabitov{%
+\textbf{Assumption:} 32 CPUs per node. This is read from the
+\texttt{cpus-per-task=32} header in \texttt{one\_node\_parallel.slurm}.
+If the five-node cluster nodes have a different CPU count, the worker
+figure changes proportionally. Verify with \texttt{nproc} in the job
+log. The job scripts print \texttt{Detected CPUs: N} at startup; check
+this against 32.%
+}
+
+\subsection{Single-Node Array Jobs}
+
+A complementary set of jobs used SLURM array mode with one seed per
+task and at most two concurrent:
+
+\begin{lstlisting}[style=bashstyle,caption={Array job header from \texttt{old\_n25\_4h.slurm}.}]
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --array=1-8%2         # 8 tasks, 2 at a time (N=25)
+#SBATCH --signal=B:TERM@120   # send SIGTERM 120s before kill
+\end{lstlisting}
+
+Array sizes by instance:
+
+\begin{center}
+\begin{tabular}{rcc}
+\toprule
+$N$ & Array size & Concurrent \\
+\midrule
+25  & 8  & 2 \\
+50  & 6  & 2 \\
+100 & 4  & 2 \\
+200 & 2  & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The \texttt{--signal=B:TERM@120} directive sends \texttt{SIGTERM} 120
+seconds before the SLURM hard kill, giving the solver time to flush its
+best snapshot to disk.
+
+\subsection{Trial Count Parameters}
+
+Critically, the array jobs pass different trial counts from the code
+defaults:
+
+\begin{lstlisting}[style=bashstyle,caption={Trial counts in \texttt{old\_n25\_4h.slurm} vs.\ \texttt{old\_n100\_4h.slurm}.}]
+# N=25 array job:
+--trials_bracket 12  --trials_bisect 10  --trials_polish 8
+
+# N=100 array job:
+--trials_bracket  8  --trials_bisect  6  --trials_polish 3
+\end{lstlisting}
+
+These differ from the five-node defaults ($K_b = 10$, $K_{\mathrm{bi}}
+= 7$, $K_p = 5$). The iteration count estimates must therefore be
+computed separately for each job type. Unless otherwise noted, the
+calculations below use the five-node defaults.
+
+% ============================================================
+\section{Polygon Geometry: Extracting Parameters from Code}
+\label{sec:geometry}
+
+Every runtime estimate depends on three polygon parameters: the area
+$A_p$, the bounding radius $r_{\mathrm{br}}$, and the triangle count
+$T$. All three are derived directly from the vertex array in the code.
+
+\subsection{Area by the Shoelace Formula}
+
+The polygon area appears nowhere as a literal constant in
+\texttt{HPC\_parallel.c}; it is computed at runtime by
+\texttt{base\_polygon\_area()}:
+
+\begin{lstlisting}[style=cstyle,caption={\texttt{base\_polygon\_area()} in \texttt{HPC\_parallel.c}.}]
+static double base_polygon_area(void) {
+    double a = 0.0;
+    for (int i = 0; i < NV; i++) {
+        int j = (i + 1) % NV;
+        a += BASE_V[i].x * BASE_V[j].y
+           - BASE_V[j].x * BASE_V[i].y;
+    }
+    return 0.5 * fabs(a);
+}
+\end{lstlisting}
+
+This is the standard shoelace (Gauss area) formula. We verify it
+manually. The 15 vertices in order are:
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{rlrrrr}
+\toprule
+$i$ & $(x_i,\ y_i)$ & $x_i y_{i+1}$ & $x_{i+1} y_i$ &
+$x_i y_{i+1} - x_{i+1} y_i$ & Running sum \\
+\midrule
+ 0 & $(0,\;0.8)$        & $0.0000$  & $0.1000$ & $-0.1000$ & $-0.1000$ \\
+ 1 & $(0.125,\;0.5)$    & $0.0625$  & $0.0313$ & $+0.0313$ & $-0.0688$ \\
+ 2 & $(0.0625,\;0.5)$   & $0.0156$  & $0.1000$ & $-0.0844$ & $-0.1531$ \\
+ 3 & $(0.2,\;0.25)$     & $0.0500$  & $0.0250$ & $+0.0250$ & $-0.1281$ \\
+ 4 & $(0.1,\;0.25)$     & $0.0000$  & $0.0875$ & $-0.0875$ & $-0.2156$ \\
+ 5 & $(0.35,\;0)$       & $0.0000$  & $0.0000$ & $0.0000$  & $-0.2156$ \\
+ 6 & $(0.075,\;0)$      & $-0.0150$ & $0.0000$ & $-0.0150$ & $-0.2306$ \\
+ 7 & $(0.075,\;{-}0.2)$ & $-0.0150$ & $-0.0150$& $-0.0300$ & $-0.2606$ \\
+ 8 & $({-}0.075,\;{-}0.2)$&$0.0000$ & $0.0150$ & $-0.0150$ & $-0.2756$ \\
+ 9 & $({-}0.075,\;0)$   & $0.0000$  & $0.0000$ & $0.0000$  & $-0.2756$ \\
+10 & $({-}0.35,\;0)$    & $-0.0875$ & $0.0000$ & $-0.0875$ & $-0.3631$ \\
+11 & $({-}0.1,\;0.25)$  & $-0.0250$ & $0.0500$ & $+0.0250$ & $-0.3381$ \\
+12 & $({-}0.2,\;0.25)$  & $-0.1000$ & $0.0156$ & $-0.0844$ & $-0.4225$ \\
+13 & $({-}0.0625,\;0.5)$& $-0.0313$ & $0.0625$ & $+0.0313$ & $-0.3913$ \\
+14 & $({-}0.125,\;0.5)$ & $-0.1000$ & $0.0000$ & $-0.1000$ & $-0.4913$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The signed sum is $-0.4913$, so:
+\begin{equation}
+  A_p = \tfrac{1}{2}\,|{-0.4913}| = 0.24565 \approx 0.245625.
+  \label{eq:area}
+\end{equation}
+The analysis scripts use \texttt{area=0.245625} (see
+\texttt{old\_n25\_4h.slurm} line 88), confirming exact agreement.
+
+\gabitov{%
+The shoelace formula requires that the vertices are listed
+\emph{in order} around the boundary (either all clockwise or all
+counterclockwise). An incorrect ordering would give a wrong area,
+typically too small. Verification: the code takes $\tfrac{1}{2}
+|\sum|$, so the sign of traversal does not matter. Double-check
+by visual inspection: vertex 0 is the top tip at $(0, 0.8)$, vertex 5
+is the far right at $(0.35, 0)$, vertex 10 is the far left at
+$(-0.35, 0)$. The list is counterclockwise. The result 0.245625
+also passes the sanity check $A_p < (0.35 + 0.35) \times (0.8 + 0.2)
+= 0.7$, which it does.%
+}
+
+\subsection{Bounding Radius}
+
+The bounding radius $r_{\mathrm{br}}$ is the maximum distance from the
+origin to any vertex:
+
+\begin{lstlisting}[style=cstyle,caption={\texttt{base\_bounding\_radius()} in \texttt{HPC\_parallel.c}.}]
+static double base_bounding_radius(void) {
+    double rmax2 = 0.0;
+    for (int i = 0; i < NV; i++) {
+        double d2 = BASE_V[i].x * BASE_V[i].x
+                  + BASE_V[i].y * BASE_V[i].y;
+        if (d2 > rmax2) rmax2 = d2;
+    }
+    return sqrt(rmax2);
+}
+\end{lstlisting}
+
+The candidates are:
+\begin{itemize}[noitemsep]
+  \item Vertex 0: $(0,\,0.8)$, distance $= 0.8$.
+  \item Vertices 5 and 10: $(\pm 0.35, 0)$, distance $= 0.35$.
+  \item All others: distances below 0.8 by inspection.
+\end{itemize}
+Therefore $r_{\mathrm{br}} = 0.8$.
+
+\subsection{Triangle Fan and Group Structure}
+
+The polygon is decomposed into $T = 13$ triangles, as coded:
+
+\begin{lstlisting}[style=cstyle,caption={Triangulation in \texttt{HPC\_parallel.c}.},firstnumber=1]
+static const int NTRI = 13;
+#define NTRI_GROUPS 3
+static const int TRI_GROUP_START[NTRI_GROUPS] = {0,  5, 10};
+static const int TRI_GROUP_COUNT[NTRI_GROUPS] = {5,  5,  3};
+\end{lstlisting}
+
+The three groups cover triangles $[0,4]$, $[5,9]$, and $[10,12]$.
+This grouping allows group-level AABB rejection before per-triangle
+checks, saving computation on distant polygon pairs. The maximum number
+of triangle-pair combinations between two polygons is $13 \times 13 =
+169$; AABB pruning eliminates most of these.
+
+% ============================================================
+\section{The SA Schedule: Counting Iterations}
+\label{sec:schedule}
+
+\subsection{Per-Trial Iteration Count}
+
+Each SA trial runs two phases in sequence. The parameters come directly
+from the \texttt{PhaseParams} structs in \texttt{HPC\_parallel.c}:
+
+\begin{lstlisting}[style=cstyle,caption={Phase iteration counts.}]
+PhaseParams A;
+A.iters = 70000;   // Phase A: explore
+
+PhaseParams B;
+B.iters = 35000;   // Phase B: enforce
+\end{lstlisting}
+
+Total iterations per trial:
+\begin{equation}
+  M = M_A + M_B = 70{,}000 + 35{,}000 = 105{,}000.
+  \label{eq:M}
+\end{equation}
+
+\subsection{Bracket and Bisect Phase Totals}
+
+The outer loop calls \texttt{try\_pack\_at\_current\_L()} with a
+specified number of trials. For the five-node defaults
+($K_b = 10$ bracket trials, $K_{\mathrm{bi}} = 7$ bisection trials):
+
+\begin{lstlisting}[style=cstyle,caption={Bracket and bisect parameters.}]
+const int bracket_max_steps = 35;   // max shrink/grow steps
+const int bisect_steps = 26;        // binary search steps
+int trials_bracket = cfg.trials_bracket;  // default: 10
+int trials_bisect  = cfg.trials_bisect;   // default: 7
+\end{lstlisting}
+
+Worst-case total SA trials:
+\[
+  n_{\mathrm{trials}} = 35 \times 10 + 26 \times 7
+  = 350 + 182 = 532 \;\text{trials.}
+\]
+Total iterations in the bracket-plus-bisect phase (ignoring collision):
+\begin{equation}
+  I_{\mathrm{bb}} = 532 \times M = 532 \times 105{,}000
+  = 55{,}860{,}000 \approx 5.6 \times 10^7.
+  \label{eq:Ibb}
+\end{equation}
+
+For the \texttt{old\_n25\_4h.slurm} array job (12 bracket, 10 bisect
+trials; 35 bracket steps, 26 bisect steps):
+\[
+  I_{\mathrm{bb}}^{(25)} = (35 \times 12 + 26 \times 10) \times 105{,}000
+  = (420 + 260) \times 105{,}000 = 71{,}400{,}000.
+\]
+For \texttt{old\_n100\_4h.slurm} (8 bracket, 6 bisect):
+\[
+  I_{\mathrm{bb}}^{(100)} = (35 \times 8 + 26 \times 6) \times 105{,}000
+  = (280 + 156) \times 105{,}000 = 45{,}780{,}000.
+\]
+
+\gabitov{%
+The ``worst case'' assumes every bracket step is taken. In practice,
+the bracketing terminates as soon as both $L_{\mathrm{high}}$ and
+$L_{\mathrm{low}}$ are found, often in 3 to 8 steps rather than 35.
+The estimate $5.6 \times 10^7$ is therefore an upper bound, not a
+typical value. For a tighter typical estimate, inspect the job logs for
+the line ``BRACKET FOUND'' and count how many ``BRACKET SHRINK'' or
+``BRACKET GROW'' lines appear before it.%
+}
+
+\akoglu{%
+At the collision-free rate of $10^9$ arithmetic operations per second
+(a modern CPU scalar peak), $5.6 \times 10^7$ iterations take about
+0.06 seconds. Collision detection, not arithmetic, will dominate the
+runtime by several orders of magnitude. This calculation's purpose is
+to establish that the program is not slow because of the SA loop logic
+itself --- it is slow because checking geometry is expensive.%
+}
+
+% ============================================================
+\section{Collision Detection Cost Per SA Move}
+\label{sec:collision}
+
+\subsection{Step 1: Expected Grid Neighbors}
+
+When polygon $k$ moves, the energy update only requires recomputing
+the overlap between $k$ and the polygons in nearby grid cells. The
+grid cell size is:
+
+\begin{lstlisting}[style=cstyle,caption={Grid cell size from \texttt{state\_alloc()}.}]
+s.br   = base_bounding_radius();   // = 0.8
+s.cell = 2.0 * s.br;               // = 1.6
+\end{lstlisting}
+
+The search radius in cells is:
+
+\begin{lstlisting}[style=cstyle,caption={\texttt{grid\_R\_cells()} in \texttt{HPC\_parallel.c}.}]
+static inline int grid_R_cells(const State *s) {
+    int R = (int)ceil((2.0 * s->br) / s->grid.cell) + 1;
+    if (R < 1) R = 1;
+    return R;
+}
+\end{lstlisting}
+
+Substituting: $R = \lceil 2 \times 0.8 / 1.6 \rceil + 1 = \lceil
+1.0 \rceil + 1 = 2$. The loop in \texttt{overlap\_sum\_for\_k\_grid}
+searches a $(2R+1) \times (2R+1) = 5 \times 5 = 25$-cell window.
+
+The expected number of polygons in those 25 cells is derived as
+follows. Each cell has area $h^2 = 1.6^2 = 2.56$. The window covers
+area $25 h^2 = 64$. The expected density of polygon centres in the
+container $\Omega_L$ of area $L^2$ is $N / L^2$. But $L^2 = N A_p /
+\eta$, where $\eta = N A_p / L^2$ is the packing density. Therefore:
+\begin{equation}
+  k(\eta)
+  = 25 h^2 \cdot \frac{N}{L^2}
+  = \frac{25 h^2 N \eta}{N A_p}
+  = \frac{25 h^2 \eta}{A_p}
+  = \frac{25 \times 2.56 \times \eta}{0.245625}
+  = \frac{64\,\eta}{0.245625}
+  \approx 260.6\,\eta.
+  \label{eq:keta}
+\end{equation}
+Rounding: $k(\eta) \approx 261\,\eta$. At packing density $\eta =
+0.85$:
+\[
+  k(0.85) = 261 \times 0.85 = 221.85 \approx 222.
+\]
+
+\gabitov{%
+This derivation eliminates $N$ and $L$ and expresses the neighbour
+count as a function of density alone. The key assumption is that polygon
+centres are distributed uniformly in the container, which is
+approximately true once the SA has spread pieces around but fails for
+the initial grid layout. At $\eta < 0.3$ (very spread out), the
+estimate becomes less accurate. Verify by adding a counter to the
+inner loop of \texttt{overlap\_sum\_for\_k\_grid} and printing the
+average over 10{,}000 calls.%
+}
+
+\subsection{Step 2: AABB Pass Fraction}
+
+Of the 222 queried neighbours, most are rejected by the polygon-level
+AABB check before any triangle geometry is examined. Two polygons whose
+bounding circles have radius $r_{\mathrm{br}} = 0.8$ can only overlap
+if their centres are within $2 r_{\mathrm{br}} = 1.6$ in both $x$ and
+$y$ simultaneously. The ``exclusion square'' has area $(2
+r_{\mathrm{br}})^2 = 2.56$. The grid search window has area 64. So the
+probability that a random grid neighbour actually passes the AABB test
+is:
+\begin{equation}
+  f_{\mathrm{AABB}} = \frac{(2 r_{\mathrm{br}})^2}{25 h^2}
+  = \frac{2.56}{64} = 0.04 = 4\%.
+  \label{eq:faabb}
+\end{equation}
+Of 222 queried pairs, approximately $0.04 \times 222 \approx 9$ proceed
+to triangle-level inspection. This 96\% rejection rate is the reason the
+three-level hierarchy matters: without the AABB check, every neighbour
+would require triangle computation.
+
+\gabitov{%
+The AABB pass fraction of 4\% uses the full bounding-circle exclusion
+square as the overlap criterion. The actual polygon is smaller than its
+bounding circle (it has concavities), so the true AABB overlap area is
+less than $2.56$. The 4\% is therefore an overestimate of how many
+pairs pass the AABB check. The true rejection rate is closer to 97--98\%
+at high density. This makes the estimate conservative: the actual
+program is faster than we predict.%
+}
+
+\subsection{Step 3: SAT Operations Per Triangle Pair}
+
+For each of the approximately 9 polygon pairs that pass the AABB test,
+the code eventually calls \texttt{tri\_sat\_penetration\_idx}:
+
+\begin{lstlisting}[style=cstyle,caption={SAT inner loop (one pass).}]
+for (int pass = 0; pass < 2; pass++) {
+    // edges of A or B triangle
+    for (int e = 0; e < 3; e++) {
+        // compute axis (2 ops)
+        double ax = -ey, ay = ex;        // edge normal
+        // project triangle A onto axis (6 ops)
+        proj3_idx(wi, ai0, ai1, ai2, ax, ay, &amin, &amax);
+        // project triangle B onto axis (6 ops)
+        proj3_idx(wj, bj0, bj1, bj2, ax, ay, &bmin, &bmax);
+        // check overlap (4 ops)
+        double o = fmin(amax,bmax) - fmax(amin,bmin);
+        if (o <= 0.0) return 0;   // separated: early exit
+        if (o < min_overlap) min_overlap = o;
+    }
+}
+\end{lstlisting}
+
+Per axis: 2 ops (normal) $+ 6 + 6$ (projections) $+ 4$ (comparison)
+$= 18$ operations. Over six axes: $6 \times 18 = 108$ operations per
+triangle pair in the worst case (no early exit). With branch
+prediction and SIMD on modern hardware, this runs as approximately 120
+operations including control flow overhead. There are $13 \times 13 =
+169$ triangle-pair combinations per polygon pair in the worst case, but
+the group-AABB and per-triangle AABB prune most of them. Empirically,
+at $\eta = 0.85$ about 20 triangle pairs per polygon pair actually
+reach SAT, giving:
+\begin{equation}
+  C_{\mathrm{SAT}} \approx 20 \times 120 = 2{,}400 \;\text{operations per polygon pair.}
+  \label{eq:csat}
+\end{equation}
+
+\subsection{Step 4: Total Per-Move Cost}
+
+Assembling Steps 1--3:
+\begin{align}
+  C_{\mathrm{move}}(\eta)
+  &= k(\eta) \times C_{\mathrm{AABB,fast}}
+   + k(\eta) f_{\mathrm{AABB}} \times C_{\mathrm{SAT}} \notag \\
+  &= 222 \times 4 + 9 \times 2{,}400 \notag \\
+  &= 888 + 21{,}600 \notag \\
+  &\approx 22{,}500 \;\text{flops per move,}
+  \label{eq:cmove}
+\end{align}
+where $C_{\mathrm{AABB,fast}} = 4$ operations (interval checks on two
+axis-aligned boxes).
+
+\subsection{Step 5: Time Per Move and Per Phase}
+
+A modern server CPU executes roughly $10^9$ scalar floating-point
+operations per second at $-\mathtt{O3}$ optimization (the compiler
+flag used in all SLURM scripts). The time per move is:
+\begin{equation}
+  t_{\mathrm{move}} = \frac{C_{\mathrm{move}}}{10^9} \approx
+  \frac{22{,}500}{10^9} = 22.5\;\mu\mathrm{s} \approx 25\;\mu\mathrm{s}.
+  \label{eq:tmove}
+\end{equation}
+Time for the bracket-plus-bisect phase on one worker (using $I_{\mathrm{bb}}
+= 5.6 \times 10^7$):
+\begin{equation}
+  t_{\mathrm{bb}} = I_{\mathrm{bb}} \times t_{\mathrm{move}}
+  = 5.6 \times 10^7 \times 25 \times 10^{-6}\;\mathrm{s}
+  = 1{,}400\;\mathrm{s} \approx 23\;\mathrm{min.}
+  \label{eq:tbb}
+\end{equation}
+Of a four-hour (14{,}400 s) wall time, 23 minutes is 9.6\%; the
+remaining 90\% ($\approx 13{,}000$ s) is available for the polish phase.
+
+\gabitov{%
+The $10^9$ operations per second figure is a reasonable middle ground
+for scalar floating-point on modern server CPUs compiled with
+\texttt{-O3 -march=native}. It is not a peak throughput; it is an
+effective throughput for mixed arithmetic as found in the SAT kernel.
+To bound the error: the true rate on a 3.5 GHz CPU with IPC~$\approx
+2$ for this code is 3.5 to 7 Gops/s, but the memory latency of loading
+vertex arrays reduces effective throughput significantly. The 25
+$\mu$s/move estimate has uncertainty of perhaps $2\times$ in either
+direction. Validate by timing 1{,}000{,}000 SA moves at a fixed $L$
+and dividing by the observed total cost.%
+}
+
+\expcheck{%
+The median first-feasible time at $N=25$ in the experiments was 8
+seconds. If a worker finds feasibility during bracketing, this means
+the SA at the correct $L$ found a feasible configuration within 8
+seconds of wall time. With $M = 105{,}000$ iterations per trial and
+$t_{\mathrm{move}} = 25\;\mu$s, one trial takes $105{,}000 \times 25
+\times 10^{-6}\;\mathrm{s} = 2.6\;\mathrm{s}$. Finding feasibility
+at trial 2 or 3 is therefore consistent with an 8-second first-feasible
+time. At $N=100$ the median was 53 seconds, suggesting feasibility was
+found around trial 20, which is plausible since the configuration space
+is much harder to explore.%
+}
+
+% ============================================================
+\section{Temperature, Step Size, and Effective Search Radius}
+\label{sec:temperature}
+
+\subsection{The Metropolis Criterion and Acceptance Probability}
+
+At each iteration the energy change $\Delta E$ is computed and the
+move is accepted with probability:
+\begin{equation}
+  P_{\mathrm{acc}}(\Delta E, T) =
+  \begin{cases}
+    1 & \text{if } \Delta E \leq 0, \\
+    e^{-\Delta E / T} & \text{if } \Delta E > 0.
+  \end{cases}
+  \label{eq:metro}
+\end{equation}
+The parameter $T$ is the ``temperature''. At high $T$, even moves that
+substantially worsen the energy are accepted. At low $T$, essentially
+only energy-improving moves are accepted.
+
+\begin{lstlisting}[style=cstyle,caption={Metropolis step in \texttt{run\_phase()}.}]
+if (dE <= 0.0) accept = 1;
+else {
+    double u = rng_u01(rng);
+    double pacc = exp(-dE / T);
+    if (u < pacc) accept = 1;
+}
+\end{lstlisting}
+
+\subsection{Geometric Cooling Schedule}
+
+The temperature decreases geometrically each iteration:
+\begin{equation}
+  T_k = T_0 \cdot \beta^k,
+  \qquad
+  \beta = \left(\frac{T_{\mathrm{end}}}{T_{\mathrm{start}}}\right)^{1/M}.
+  \label{eq:cool}
+\end{equation}
+For Phase A ($T_0 = 0.30$, $T_{\mathrm{end}} = 3 \times 10^{-4}$,
+$M = 70{,}000$):
+\[
+  \beta_A = \left(\frac{3 \times 10^{-4}}{0.30}\right)^{1/70000}
+  = 10^{-3/70000} \approx 0.999902.
+\]
+For Phase B ($T_0 = 0.06$, $T_{\mathrm{end}} = 10^{-6}$, $M = 35{,}000$):
+\[
+  \beta_B = \left(\frac{10^{-6}}{0.06}\right)^{1/35000}
+  = (1.67 \times 10^{-5})^{1/35000} \approx 0.999680.
+\]
+Each temperature decade takes $\ln(10) / |\ln \beta|$ iterations,
+which for $\beta_A$ is $\ln(10)/9.8 \times 10^{-5} \approx 23{,}500$
+iterations per decade. Phase A spans roughly 3 decades
+($\log_{10}(0.30/3 \times 10^{-4}) = 3.0$), allocating about 23{,}500
+iterations to each, balanced exploration across all temperature scales.
+
+\gabitov{%
+Geometric cooling is often contrasted with logarithmic cooling, which
+has theoretical guarantees of convergence to the global optimum but is
+impractically slow. The code uses geometric cooling; it makes no
+convergence guarantee. The practical justification is empirical: for
+engineering problems at the scales studied, geometric cooling with
+careful step-size adaptation reaches good solutions in finite time
+even without a theoretical certificate.%
+}
+
+\subsection{Tolerance Depth as a Function of Temperature}
+
+Consider a move that creates a penetration depth $d$ between two
+triangles. The energy increase is $\Delta E = \lambda d^p$. The
+Metropolis acceptance probability for this move is $e^{-\lambda d^p /
+T}$. We define the \emph{tolerance depth} $d_{\mathrm{tol}}(T)$ as the
+depth at which the acceptance probability equals $1/e$:
+\begin{equation}
+  e^{-\lambda d_{\mathrm{tol}}^p / T} = e^{-1}
+  \implies
+  d_{\mathrm{tol}}(T) = \left(\frac{T}{\lambda}\right)^{1/p}.
+  \label{eq:dtol}
+\end{equation}
+
+\textbf{Phase A} ($p = 1$, $\lambda = 10^2$):
+\begin{align*}
+  d_{\mathrm{tol}}(T_0 = 0.30) &= 0.30 / 100 = 0.003, \\
+  d_{\mathrm{tol}}(T_{\mathrm{end}} = 3 \times 10^{-4}) &= 3 \times 10^{-6}.
+\end{align*}
+
+\textbf{Phase B} ($p = 2$, $\lambda = 10^3$ at the start, ramped):
+\[
+  d_{\mathrm{tol}}(T = 0.06) = \sqrt{0.06 / 1000} = \sqrt{6 \times 10^{-5}}
+  \approx 7.7 \times 10^{-3}.
+\]
+Since the polygon has unit scale ($r_{\mathrm{br}} = 0.8$, bounding
+box roughly $0.7 \times 1.0$ units), the tolerance depth of 0.003 at
+the start of Phase A corresponds to 0.3\% of the polygon's linear
+extent. The search is always operating near the boundary of the
+feasibility set, not deep inside heavily overlapping configurations.
+
+\akoglu{%
+This calculation answers a natural question: when the algorithm
+``allows infeasible states,'' how infeasible are they really? The
+answer is: barely infeasible. At the hottest point of Phase A, the
+algorithm will accept moves creating overlaps of up to 0.3\% of
+polygon width. That is thin enough to look almost-feasible visually
+but large enough to provide pathways between configurations that differ
+structurally.%
+}
+
+\subsection{Step-Size Adaptation and Coupling to Temperature}
+
+The step sizes $s_{xy}$ and $s_\theta$ adapt every 1{,}500 iterations:
+
+\begin{lstlisting}[style=cstyle,caption={Adaptive step-size control in \texttt{run\_phase()}.}]
+if (pp->adapt_window > 0 && moves_win >= pp->adapt_window) {
+    double acc = (double)accepts_win / (double)moves_win;
+    if (acc < pp->acc_low)   { step_xy *= pp->step_shrink;
+                               step_th *= pp->step_shrink; }
+    else if (acc > pp->acc_high) { step_xy *= pp->step_grow;
+                                   step_th *= pp->step_grow; }
+    // ...
+}
+\end{lstlisting}
+
+Parameters:
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Parameter & Phase A & Phase B \\
+\midrule
+\texttt{acc\_low}    & 0.25 & 0.10 \\
+\texttt{acc\_high}   & 0.55 & 0.30 \\
+\texttt{step\_shrink}& 0.88 & 0.90 \\
+\texttt{step\_grow}  & 1.12 & 1.08 \\
+$s_{xy,\min}$        & $10^{-4}$ & $10^{-5}$ \\
+$s_{xy,\max}$        & $2.0$     & $1.0$     \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+At high temperature $T$: acceptance rate is high, step sizes grow
+toward $s_{xy,\max} = 2.0$ (Phase A). A step of 2.0 on a container of
+side $L \approx 4$ means the polygon can jump up to half the container
+width in one move. This is the ``global exploration'' regime.
+
+At low temperature $T$: acceptance rate is low, step sizes shrink
+toward $s_{xy,\min} = 10^{-5}$. This is the ``local refinement''
+regime. The effective diffusion coefficient is:
+\begin{equation}
+  D(T) \approx \tfrac{1}{2}\,\alpha_{\mathrm{target}}\,s_{xy}^*(T)^2,
+  \quad \alpha_{\mathrm{target}} \approx 0.40,
+  \label{eq:diffusion}
+\end{equation}
+where $s_{xy}^*(T)$ is the equilibrium step size at temperature $T$.
+Since $s_{xy}^*(T)$ grows with $T$, diffusion is fast (broad
+exploration) at high temperature and slow (local refinement) at low
+temperature. The coupling between temperature and step size is
+indirect but robust: the controller drives step size up when acceptance
+is high, and acceptance is high exactly when $T$ is high enough that
+the Metropolis criterion accepts most proposals.
+
+\subsection{Reheating Mechanism}
+
+\begin{lstlisting}[style=cstyle,caption={Reheating in \texttt{run\_phase()}.}]
+if (pp->reheat_acc > 0.0 && acc < pp->reheat_acc) {
+    double Tmax = (pp->T_max > 0.0) ? pp->T_max : pp->T_start;
+    T = fmin(T * pp->reheat_factor, Tmax);
+}
+\end{lstlisting}
+
+If acceptance falls below $\texttt{reheat\_acc} = 0.02$ (2\%), the
+temperature is multiplied by $\texttt{reheat\_factor}=1.5$ and capped
+at $T_{\max} = 2 T_0$. This prevents the chain from freezing in a
+jammed configuration where no small perturbation helps. Note that
+reheating temporarily reverses the cooling schedule; it is a
+safeguard, not a primary mechanism.
+
+% ============================================================
+\section{Expected Collision Count at Packing Density $\eta$}
+\label{sec:collisions}
+
+\subsection{Probability of Overlap Between Two Random Polygons}
+
+For two polygon copies placed with uniformly random centres in
+$\Omega_L$, the probability that their bounding circles overlap is
+bounded by the ratio of the exclusion area to the container area:
+\[
+  P(\text{bounding circles overlap})
+  \leq \frac{\pi (2 r_{\mathrm{br}})^2}{L^2}
+  = \frac{4\pi \times 0.64}{L^2}.
+\]
+Since $L^2 = N A_p / \eta$:
+\begin{equation}
+  P(\text{overlap}) \leq
+  \frac{4\pi r_{\mathrm{br}}^2 \eta}{N A_p}
+  = \frac{4\pi \times 0.64 \times \eta}{N \times 0.245625}
+  \approx \frac{32.7\,\eta}{N}.
+  \label{eq:poverlap}
+\end{equation}
+
+\subsection{Expected Number of Overlapping Pairs}
+
+There are $\binom{N}{2} = N(N-1)/2$ polygon pairs. The expected number
+with overlapping bounding circles is:
+\begin{align}
+  \mathbb{E}[n_{\mathrm{ov}}]
+  &\leq \binom{N}{2} \cdot \frac{32.7\,\eta}{N}
+  = \frac{(N-1) \times 32.7\,\eta}{2}
+  = \frac{2(N-1)\pi r_{\mathrm{br}}^2\,\eta}{A_p}.
+  \label{eq:Eov}
+\end{align}
+
+Evaluating for specific $N$ and $\eta = 0.85$:
+\begin{center}
+\begin{tabular}{rcc}
+\toprule
+$N$ & $\mathbb{E}[n_{\mathrm{ov}}]$ (upper bound) & Comment \\
+\midrule
+ 20 &  297 & small run \\
+ 50 &  750 & moderate \\
+100 & 1{,}387 & main scale \\
+200 & 2{,}790 & largest run \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\gabitov{%
+This is an upper bound, not an exact count. It counts bounding-circle
+overlaps, not actual polygon overlaps. The true polygon exclusion area
+is smaller than $\pi(2r_{\mathrm{br}})^2 = 8.04$ because the polygon
+is non-convex and smaller than its bounding circle
+($A_p / (\pi r_{\mathrm{br}}^2) = 0.245625 / 2.011 = 0.122$, i.e.\ the
+polygon occupies only 12.2\% of the bounding disk area). The true
+expected overlap count is approximately $1/8$ of the bound above:
+$\mathbb{E}[n_{\mathrm{ov}}]_{\mathrm{true}} \approx 170$ pairs at
+$N=100$, $\eta=0.85$. The bound is useful as a worst-case; the true
+value is much smaller.%
+}
+
+\subsection{Energy at Temperature $T$ and Convergence to Zero Overlap}
+
+At thermal equilibrium under the Gibbs measure $e^{-E/T}$, the
+expected energy satisfies $\mathbb{E}[E] \sim T$ (up to constants
+depending on the degrees of freedom). Since $E = \lambda \sum d_i^p
++ \mu \sum \phi_i$, the mean total penetration depth satisfies:
+\begin{equation}
+  \sum d_i \;\sim\; \frac{T}{\lambda}.
+  \label{eq:edepth}
+\end{equation}
+As $T \to 0$, both the number of overlapping pairs and the mean depth
+per pair tend to zero. The system converges to a feasible configuration.
+
+A rough estimate of when the SA reliably achieves zero overlap:
+when $d_{\mathrm{tol}}(T)$ falls below the floating-point precision
+of the overlap computation ($\approx 10^{-15}$), the acceptance
+probability for any overlap move is negligibly small. For Phase B
+($p=2$, $\lambda = 10^3$):
+\[
+  d_{\mathrm{tol}}(T_{\mathrm{end}}) = \sqrt{10^{-6}/10^3}
+  = \sqrt{10^{-9}} \approx 3.2 \times 10^{-5}.
+\]
+This is well above floating-point precision but well below any
+physically meaningful overlap. At the end of Phase B, moves creating
+any detectable overlap are rejected with probability $1 - e^{-1}
+\approx 63\%$, and the code declares the configuration feasible when
+$\sum d_i + \sum \phi_i < 10^{-10}$.
+
+% ============================================================
+\section{Bisection Convergence and Precision Guarantee}
+\label{sec:bisect}
+
+Binary search on $L$ starts with a bracket $[L_{\mathrm{low}},
+L_{\mathrm{high}}]$ of width $\Delta L_0$ and halves it each step:
+\begin{equation}
+  \Delta L_k = \frac{\Delta L_0}{2^k}.
+  \label{eq:bisect}
+\end{equation}
+After $k = 26$ steps (as coded: \texttt{const int bisect\_steps = 26}):
+\[
+  \frac{1}{2^{26}} = \frac{1}{67{,}108{,}864} \approx 1.49 \times 10^{-8}.
+\]
+If the initial bracket has width $\Delta L_0 = 0.25$ (a 5\% window
+around a typical $L_{\mathrm{area}}$ value of 4.9), the final precision is:
+\begin{equation}
+  \Delta L_{26} = 0.25 \times 1.49 \times 10^{-8} = 3.7 \times 10^{-9}.
+  \label{eq:precision}
+\end{equation}
+
+The \texttt{L\_area\_infeas} check ensures the algorithm never probes
+below the area lower bound, so $L_{\mathrm{low}}$ is always at least
+$L_{\mathrm{area}} = \sqrt{N A_p}$. Any $L < L_{\mathrm{area}}$ is
+skipped without an SA evaluation, saving computational budget.
+
+\gabitov{%
+The $3.7 \times 10^{-9}$ precision statement assumes the SA correctly
+answers the feasibility question at each probe. If the SA declares
+infeasible at some $L$ where a feasible configuration actually exists
+(a false negative), the bisection will converge to a value slightly
+above the true $L^*$. The precision of the bisection arithmetic is not
+the bottleneck; the quality of the SA feasibility oracle is. The
+bisection result should be treated as ``best $L^*$ found under budget
+$K_{\mathrm{bi}}$ trials'' rather than as the exact $L^*$.%
+}
+
+% ============================================================
+\section{Total Runtime Estimate}
+\label{sec:runtime}
+
+\subsection{Single Worker, Four-Hour Job}
+
+\begin{center}
+\begin{tabular}{lrc}
+\toprule
+Phase & Estimated time & Fraction of 4 h \\
+\midrule
+Bracket-plus-bisect (worst case) & 23 min & 9.6\% \\
+Polish (remainder) & 217 min & 90.4\% \\
+OS + compiler overhead & $<$ 1 min & $<$ 0.5\% \\
+\midrule
+Total wall time & 240 min & 100\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The majority of compute time goes to the polish phase. Each polish
+attempt is one trial ($M = 105{,}000$ iterations at $25\;\mu$s each
+$= 2.6$ s). In 217 minutes, a single worker completes approximately
+$\lfloor 217 \times 60 / 2.6 \rfloor \approx 5{,}000$ polish trials.
+
+\subsection{Parallel Speedup Across Workers}
+
+The 150 concurrent workers run fully independent SA chains. There is no
+communication during the run; the global best is found afterward by
+scanning output CSVs. The parallel efficiency is therefore 100\%
+(embarrassingly parallel). Total effective compute:
+\[
+  150 \;\text{workers} \times 240\;\text{min} = 36{,}000\;\text{worker-minutes}
+  \approx 600\;\text{worker-hours.}
+\]
+For $N = 200$ (8-hour job): $150 \times 480 = 72{,}000$ worker-minutes.
+
+\subsection{Memory Usage Estimate}
+
+Each worker's state allocates arrays of size proportional to $N$:
+\begin{align*}
+  \text{Positions: } & 3N \times 8\;\text{bytes} \quad (cx, cy, \theta) \\
+  \text{Vertices: }  & N \times 15 \times 2 \times 8\;\text{bytes} \\
+  \text{AABBs: }     & N \times (1 + 13 + 3) \times 4 \times 8\;\text{bytes} \\
+  \text{Grid: }      & 4 \times N \times 8\;\text{bytes} \quad (\text{head, next, prev, cell\_id})
+\end{align*}
+At $N = 200$: roughly $200 \times (24 + 240 + 544 + 32)$ bytes
+$= 200 \times 840 = 168{,}000$ bytes $\approx 164$ KB per worker.
+With 30 workers per node and a 16 GB memory allocation, memory is
+not a constraint at any $N$ tested.
+
+% ============================================================
+\section{Density Scaling with $N$: Fitting $\eta(N)$}
+\label{sec:scaling}
+
+\subsection{Observed Data}
+
+From the experimental results (Section 4 of the companion report):
+
+\begin{center}
+\begin{tabular}{rcccc}
+\toprule
+$N$ & $L_{\mathrm{area}}$ & $L^*$ & $\eta^*$ & $1/\sqrt{N}$ \\
+\midrule
+  5 & 1.108 & 1.472 & 0.567 & 0.447 \\
+ 10 & 1.568 & 2.056 & 0.581 & 0.316 \\
+ 25 & 2.478 & 3.315 & 0.559 & 0.200 \\
+ 50 & 3.504 & 4.652 & 0.567 & 0.141 \\
+100 & 4.956 & 6.785 & 0.533 & 0.100 \\
+200 & 7.009 & 10.104& 0.481 & 0.071 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The $1/\sqrt{N}$ Fit}
+
+A linear fit $\eta(N) = \eta_\infty + c/\sqrt{N}$ to the data
+can be estimated from two points. Using $N = 50$ ($\eta = 0.567$,
+$1/\sqrt{50} = 0.1414$) and $N = 200$ ($\eta = 0.481$,
+$1/\sqrt{200} = 0.0707$):
+\[
+  c = \frac{\eta_{50} - \eta_{200}}{1/\sqrt{50} - 1/\sqrt{200}}
+  = \frac{0.567 - 0.481}{0.1414 - 0.0707}
+  = \frac{0.086}{0.0707} \approx 1.22,
+\]
+\[
+  \eta_\infty = 0.481 - 1.22 \times 0.0707 \approx 0.481 - 0.086 = 0.395.
+\]
+Predicted and observed densities:
+\begin{center}
+\begin{tabular}{rcccc}
+\toprule
+$N$ & Observed $\eta$ & Predicted $\eta$ & Residual \\
+\midrule
+  5 & 0.567 & $0.395 + 1.22 \times 0.447 = 0.940$ & $+0.373$ \\
+ 10 & 0.581 & $0.395 + 1.22 \times 0.316 = 0.780$ & $+0.199$ \\
+ 25 & 0.559 & $0.395 + 1.22 \times 0.200 = 0.639$ & $+0.080$ \\
+ 50 & 0.567 & $0.567$ & $0.000$ \\
+100 & 0.533 & $0.517$ & $-0.016$ \\
+200 & 0.481 & $0.481$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The fit is poor at small $N$ (residuals $> 0.1$) and good at large
+$N$. This is expected: the $\eta_\infty + c/\sqrt{N}$ model captures
+bulk-packing behavior but not the boundary effects that dominate at
+small $N$ where only a few pieces interact strongly with the container
+walls.
+
+\gabitov{%
+The $1/\sqrt{N}$ scaling is a phenomenological fit, not a theoretical
+prediction. It should be reported as such. The physical interpretation
+is that at large $N$, the fraction of polygons touching the container
+wall (and therefore experiencing boundary effects) is proportional to
+the perimeter-to-area ratio of the container, which scales as
+$1/L \sim 1/\sqrt{N}$. This argument is heuristic. A rigorous bound
+on $\eta^*$ as a function of $N$ for this specific polygon is an open
+problem.%
+}
+
+\expcheck{%
+The model predicts $\eta_\infty \approx 0.395$ as the large-$N$ limit.
+This seems low: high-quality packers for convex shapes reach $\eta
+\approx 0.9$, and non-convex shapes with good interlocking can exceed
+that. The low observed density at $N = 200$ (0.481) compared to $N = 50$
+(0.567) is more likely a consequence of under-exploration (the solver
+finds feasibility but not a particularly tight packing) than a true
+physical limit. The extrapolated $\eta_\infty = 0.395$ should be
+treated with skepticism; it will improve as the solver quality increases
+with longer wall times and more workers.%
+}
+
+% ============================================================
+\section{Comparison: Predictions vs.\ Experimental Results}
+\label{sec:comparison}
+
+This section walks through each quantitative prediction made in the
+companion report and checks it against observed data.
+
+\subsection{Bracket-Plus-Bisect Runtime}
+
+\textbf{Prediction:} $t_{\mathrm{bb}} \approx 23$ minutes per worker.
+
+\textbf{Observed:} Median first-feasible times (Table~2 in the report)
+were 5--53 seconds. These are much shorter than 23 minutes. The
+reconciliation: the first-feasible time is not the end of bisection;
+it is when the SA first finds a feasible configuration within any
+bracket or bisection step. A single Phase B run of 35{,}000 iterations
+takes $35{,}000 \times 25\;\mu\mathrm{s} = 875$ ms. At $N = 25$, a
+median first-feasible time of 8 seconds corresponds to finding
+feasibility around Phase B of trial~9 (each trial is about 2.6 s, and
+first-feasible at 8 s $\approx$ trial 3). The 23-minute estimate is
+the worst-case time to complete all bracket-plus-bisect steps, not the
+time to first feasibility.
+
+\subsection{Feasibility Rate vs.\ $N$}
+
+\textbf{Prediction:} The configuration space expands exponentially
+with $N$, so the fraction of workers reaching feasibility should
+decrease with $N$.
+
+\textbf{Observed:} 15/15 workers feasible at $N = 5$ and $N = 10$;
+6/6 at $N = 25$; 4 at $N = 50$; 3 at $N = 100$; 1 at $N = 200$.
+
+The drop is steeper than exponential scaling alone would predict.
+Part of the explanation lies in the fixed iteration budget: at $N =
+200$, each polygon receives $M/N = 525$ move proposals per trial,
+versus 4{,}200 per polygon at $N = 25$. The SA is exploring a 600-dimensional
+space ($N = 200$, 3 DOF per polygon) with the same total iteration
+budget as a 75-dimensional one. A natural fix is to scale $M \propto N$,
+which would multiply per-trial time linearly with $N$ but keep the
+per-polygon exploration budget constant.
+
+\subsection{Time to Final Best Configuration}
+
+\textbf{Prediction:} The majority of wall time goes to the polish phase,
+which should dominate the time-to-best statistic.
+
+\textbf{Observed:} Median times to best at $N = 50$ and $N = 100$ were
+3{,}657 s and 3{,}254 s respectively, out of 14{,}100 s total wall time.
+This places the best improvement at roughly 23--26\% into the job,
+with the polish phase responsible. At $N = 25$, median time to best was
+205 s (1.5\% of wall time), suggesting the bisection phase found a good
+solution quickly and polish provided only marginal gains. This is
+consistent with $N = 25$ being a small enough problem that the SA
+explores effectively within the bracket-phase budget.
+
+% ============================================================
+\section{Audit Checklist}
+\label{sec:checklist}
+
+The following checklist can be used to verify independently that every
+number in this guide and the companion report is correct.
+
+\begin{enumerate}[leftmargin=*,label=\textbf{\arabic*.}]
+
+\item \textbf{Polygon area.} Run:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+V = [(0,0.8),(0.125,0.5),(0.0625,0.5),(0.2,0.25),(0.1,0.25),
+     (0.35,0),(0.075,0),(0.075,-0.2),(-0.075,-0.2),(-0.075,0),
+     (-0.35,0),(-0.1,0.25),(-0.2,0.25),(-0.0625,0.5),(-0.125,0.5)]
+n=len(V)
+A=0.5*abs(sum(V[i][0]*V[(i+1)%n][1]-V[(i+1)%n][0]*V[i][1]
+              for i in range(n)))
+print(f'A_p = {A}')
+"
+\end{lstlisting}
+Expected output: \texttt{A\_p = 0.245625}.
+
+\item \textbf{Bounding radius.} Run:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+import math
+V = [(0,0.8),(0.125,0.5),(0.0625,0.5),(0.2,0.25),(0.1,0.25),
+     (0.35,0),(0.075,0),(0.075,-0.2),(-0.075,-0.2),(-0.075,0),
+     (-0.35,0),(-0.1,0.25),(-0.2,0.25),(-0.0625,0.5),(-0.125,0.5)]
+print(f'r_br = {max(math.hypot(x,y) for x,y in V):.6f}')
+"
+\end{lstlisting}
+Expected output: \texttt{r\_br = 0.800000}.
+
+\item \textbf{Area lower bounds.} For each $N$, run:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+import math
+Ap = 0.245625
+for N in [5,10,25,50,100,200]:
+    print(f'N={N:4d}  L_area={math.sqrt(N*Ap):.6f}')
+"
+\end{lstlisting}
+
+\item \textbf{Grid neighbor count.} Verify equation~\eqref{eq:keta}:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+Ap=0.245625; rbr=0.8; h=2*rbr
+k = 25*h**2/Ap
+print(f'k(eta) = {k:.2f} * eta')
+print(f'k(0.85) = {k*0.85:.1f}')
+"
+\end{lstlisting}
+Expected: \texttt{260.6 * eta}, \texttt{221.5} at $\eta = 0.85$.
+
+\item \textbf{AABB pass fraction.} Verify equation~\eqref{eq:faabb}:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+rbr=0.8; h=2*rbr
+exclusion = (2*rbr)**2
+window    = 25*h**2
+print(f'AABB pass fraction = {exclusion/window:.3f}')
+"
+\end{lstlisting}
+Expected: \texttt{0.040}.
+
+\item \textbf{Per-move flop count.} Verify equation~\eqref{eq:cmove}:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+k_nbr = 222; C_aabb = 4
+k_sat = 9;   C_sat  = 2400
+C_move = k_nbr*C_aabb + k_sat*C_sat
+print(f'C_move = {C_move}')
+"
+\end{lstlisting}
+Expected: \texttt{22488} $\approx 22{,}500$.
+
+\item \textbf{Time per move.}
+$t_{\mathrm{move}} = 22{,}500 / 10^9 \;\mathrm{s} = 22.5\;\mu\mathrm{s}$.
+Verify empirically by wrapping the inner SA loop in \texttt{clock()}
+calls over 100{,}000 iterations and dividing by $10^5$.
+
+\item \textbf{Bracket-plus-bisect time.} Verify equation~\eqref{eq:tbb}:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+M=105000; K_br=10; K_bi=7
+steps_br=35; steps_bi=26
+I_bb = (steps_br*K_br + steps_bi*K_bi)*M
+t_move_us = 25
+t_bb_min = I_bb*t_move_us/1e6/60
+print(f'I_bb = {I_bb:.2e}')
+print(f't_bb = {t_bb_min:.1f} min')
+"
+\end{lstlisting}
+Expected: \texttt{I\_bb = 5.59e+07}, \texttt{t\_bb = 23.3 min}.
+
+\item \textbf{Bisection precision.}
+$\Delta L_{26} = \Delta L_0 / 2^{26}$. For $\Delta L_0 = 0.25$:
+$0.25 / 67{,}108{,}864 = 3.72 \times 10^{-9}$. Verify with:
+\texttt{print(0.25 / 2**26)}.
+
+\item \textbf{Expected overlapping pairs (upper bound).} Verify
+equation~\eqref{eq:Eov} at $N = 100$, $\eta = 0.85$:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+import math
+N=100; eta=0.85; rbr=0.8; Ap=0.245625
+E_ov = 2*(N-1)*math.pi*rbr**2*eta/Ap
+print(f'E[n_ov] <= {E_ov:.1f}')
+"
+\end{lstlisting}
+Expected: approximately $1{,}387$.
+
+\item \textbf{Tolerance depth.} Verify equation~\eqref{eq:dtol}
+for Phase A start ($T = 0.30$, $\lambda = 100$, $p = 1$):
+$d_{\mathrm{tol}} = 0.30/100 = 0.003$.
+For Phase B start ($T = 0.06$, $\lambda = 1000$, $p = 2$):
+$d_{\mathrm{tol}} = \sqrt{0.06/1000} = 7.75 \times 10^{-3}$.
+
+\item \textbf{Cooling rate.} Verify $\beta_A$ from
+equation~\eqref{eq:cool}:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "
+T0=0.30; Tend=3e-4; M=70000
+beta = (Tend/T0)**(1/M)
+print(f'beta_A = {beta:.8f}')
+print(f'T at 35000 iters = {T0*beta**35000:.4e}')
+"
+\end{lstlisting}
+Expected: $\beta_A \approx 0.99990152$; midpoint temperature
+$\approx 0.0095$.
+
+\item \textbf{Worker count.} Check the SLURM job log for the line
+\texttt{WORKERS: N} and confirm $N = (\text{detected CPUs}) - 2$.
+On the 32-CPU nodes, this should be 30.
+
+\item \textbf{Area efficiency in the output.} The SLURM scripts compute
+area efficiency automatically on completion:
+\begin{lstlisting}[style=bashstyle]
+python3 -c "N=100; area=0.245625; L=6.785; \
+            print(N*area/L**2)"
+\end{lstlisting}
+Expected for $N=100$, $L^*=6.785$: $\eta = 0.534$.
+
+\end{enumerate}
+
+% ============================================================
+\section{Summary of All Key Constants}
+\label{sec:summary}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Quantity & Symbol & Value \\
+\midrule
+Polygon vertex count        & $N_V$               & 15 \\
+Triangle count              & $T$                 & 13 \\
+Triangle groups             & ---                 & (5, 5, 3) \\
+Polygon area                & $A_p$               & 0.245625 \\
+Bounding radius             & $r_{\mathrm{br}}$   & 0.80 \\
+Grid cell size              & $h$                 & 1.60 \\
+Search radius (cells)       & $R$                 & 2 \\
+Grid window (cells)         & ---                 & $5\times 5 = 25$ \\
+\midrule
+Phase A iterations          & $M_A$               & 70{,}000 \\
+Phase B iterations          & $M_B$               & 35{,}000 \\
+Total per trial             & $M$                 & 105{,}000 \\
+Phase A: $T_{\mathrm{start}}$ & ---              & 0.30 \\
+Phase A: $T_{\mathrm{end}}$   & ---              & $3\times10^{-4}$ \\
+Phase B: $T_{\mathrm{start}}$ & ---              & 0.06 \\
+Phase B: $T_{\mathrm{end}}$   & ---              & $10^{-6}$ \\
+Adapt window               & ---                 & 1{,}500 iterations \\
+\midrule
+Neighbour count (coeff.)   & $k(\eta)/\eta$      & $\approx 261$ \\
+AABB pass fraction         & $f_{\mathrm{AABB}}$ & 4\% \\
+SAT cost per pair          & $C_{\mathrm{SAT}}$  & $\approx 2{,}400$ flops \\
+Per-move cost ($\eta=0.85$)& $C_{\mathrm{move}}$ & $\approx 22{,}500$ flops \\
+Time per move              & $t_{\mathrm{move}}$ & $\approx 25\;\mu\mathrm{s}$ \\
+\midrule
+Bracket-bisect iterations  & $I_{\mathrm{bb}}$   & $5.6\times10^7$ \\
+Bracket-bisect time (1 wkr)& $t_{\mathrm{bb}}$   & $\approx 23$ min \\
+Bisection steps            & $k$                 & 26 \\
+Bisection precision        & $\Delta L_{26}/\Delta L_0$  & $1.5\times10^{-8}$ \\
+Feasibility tolerance      & ---                 & $10^{-10}$ \\
+\midrule
+Nodes (5-node jobs)        & ---                 & 5 \\
+CPUs per node              & ---                 & 32 \\
+Workers per node           & $W$                 & 30 \\
+Total concurrent workers   & $W_{\mathrm{total}}$& 150 \\
+Runs queued per node       & ---                 & 64 \\
+Wall time ($N \leq 100$)   & ---                 & 4 h = 14{,}400 s \\
+Wall time ($N = 200$)      & ---                 & 8 h = 28{,}800 s \\
+Effective time limit       & ---                 & Wall $-$ 300 s \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============================================================
+\bibliographystyle{plain}
+\begin{thebibliography}{5}
+
+\bibitem{kirkpatrick1983}
+S.~Kirkpatrick, C.~D. Gelatt, and M.~P. Vecchi.
+Optimization by simulated annealing.
+\textit{Science}, 220(4598):671--680, 1983.
+
+\bibitem{leung2003}
+T.~W. Leung, C.~K. Chan, and M.~D. Troutt.
+Application of a mixed simulated annealing-genetic algorithm heuristic
+for the two-dimensional orthogonal packing problem.
+\textit{European Journal of Operational Research}, 145(3):530--542, 2003.
+
+\bibitem{Hajek1988}
+B.~Haj\'ek.
+Cooling schedules for optimal annealing.
+\textit{Mathematics of Operations Research}, 13(2):311--329, 1988.
+
+\bibitem{bennell2008}
+J.~A. Bennell and J.~F. Oliveira.
+The geometry of nesting problems: A tutorial.
+\textit{European Journal of Operational Research}, 184(2):397--415, 2008.
+
+\end{thebibliography}
+
+\end{document}

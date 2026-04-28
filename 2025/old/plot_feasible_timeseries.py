@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publication-style feasible L-vs-time plots for smoke runs (N=5 and N=10).
+"""Publication-style feasible L-vs-time plots for selected run sizes.
 
 Layout:
 - Left column: time series (all runs + aggregate best-so-far envelope)
@@ -9,6 +9,7 @@ Layout:
 from __future__ import annotations
 
 import argparse
+import string
 import csv
 import io
 import math
@@ -50,8 +51,39 @@ BASE_V = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot feasible time series from history logs")
     parser.add_argument("--logs-dir", default="logs", help="Directory containing *_history_log.csv files")
-    parser.add_argument("--output", default="img/smoke_feasible_L_timeseries_N5_N10.png", help="Output PNG path")
+    parser.add_argument(
+        "--n-values",
+        default="5,10,25,50,100,200",
+        help="Comma-separated N values to include (default: 5,10,25,50,100,200)",
+    )
+    parser.add_argument(
+        "--output",
+        default="img/feasible_L_timeseries_selected_N.png",
+        help="Output PNG path",
+    )
+    parser.add_argument(
+        "--time-series-only",
+        action="store_true",
+        help="Render only time-series rows (no per-N configuration preview column)",
+    )
     return parser.parse_args()
+
+
+def parse_n_values(raw: str) -> List[int]:
+    n_values: List[int] = []
+    seen = set()
+    for chunk in raw.split(","):
+        value = chunk.strip()
+        if not value:
+            continue
+        n = int(value)
+        if n in seen:
+            continue
+        seen.add(n)
+        n_values.append(n)
+    if not n_values:
+        raise ValueError("No N values specified")
+    return n_values
 
 
 def parse_n_from_name(path: Path) -> int | None:
@@ -78,8 +110,8 @@ def read_feasible_points(csv_path: Path) -> List[Point]:
     return points
 
 
-def collect_runs(logs_dir: Path) -> Dict[int, List[RunSeries]]:
-    by_n: Dict[int, List[RunSeries]] = {5: [], 10: []}
+def collect_runs(logs_dir: Path, n_values: List[int]) -> Dict[int, List[RunSeries]]:
+    by_n: Dict[int, List[RunSeries]] = {n: [] for n in n_values}
     for path in sorted(logs_dir.glob("*_history_log.csv")):
         n = parse_n_from_name(path)
         if n not in by_n:
@@ -255,26 +287,36 @@ def style_matplotlib() -> None:
             "legend.fontsize": 8,
             "axes.spines.top": False,
             "axes.spines.right": False,
+            "axes.linewidth": 0.8,
+            "axes.labelcolor": "#1f2937",
+            "xtick.color": "#374151",
+            "ytick.color": "#374151",
             "figure.dpi": 200,
         }
     )
 
 
-def plot_group(ax_ts: plt.Axes, ax_info: plt.Axes, n: int, runs: List[RunSeries], workspace_dir: Path) -> None:
+def plot_group(
+    ax_ts: plt.Axes,
+    ax_info: plt.Axes | None,
+    n: int,
+    runs: List[RunSeries],
+    workspace_dir: Path,
+) -> None:
     if not runs:
         ax_ts.text(0.5, 0.5, f"No feasible points for N={n}", ha="center", va="center", transform=ax_ts.transAxes)
         ax_ts.set_title(f"N={n}")
         ax_ts.set_xlabel("Elapsed time (s)")
         ax_ts.set_ylabel("Square length L")
-        ax_ts.grid(True, alpha=0.25)
-        ax_info.axis("off")
+        if ax_info is not None:
+            ax_info.axis("off")
         return
 
-    cmap = plt.get_cmap("tab10")
+    cmap = plt.get_cmap("cividis")
     for i, (_run_name, pts) in enumerate(runs):
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
-        ax_ts.plot(xs, ys, linewidth=0.9, alpha=0.55, color=cmap(i % 10))
+        ax_ts.plot(xs, ys, linewidth=0.95, alpha=0.58, color=cmap((i % 10) / 9.0))
 
     env_x, env_y = aggregate_best_envelope(runs)
     if env_x:
@@ -290,11 +332,11 @@ def plot_group(ax_ts: plt.Axes, ax_info: plt.Axes, n: int, runs: List[RunSeries]
     ax_ts.set_title(f"N={n}: feasible configurations ({len(runs)} runs)")
     ax_ts.set_xlabel("Elapsed time (s)")
     ax_ts.set_ylabel("Square length L")
-    ax_ts.grid(True, alpha=0.25)
+    ax_ts.margins(x=0.01)
     if env_x:
         handles = [
-            Line2D([0], [0], color="#64748b", lw=1.0, alpha=0.7, label="Feasible per-run trace"),
-            Line2D([0], [0], color="black", lw=2.2, label="Aggregate best-so-far"),
+            Line2D([0], [0], color="#475569", lw=1.0, alpha=0.75, label="Feasible per-run trace"),
+            Line2D([0], [0], color="#111827", lw=2.3, label="Aggregate best-so-far"),
             Line2D(
                 [0],
                 [0],
@@ -306,34 +348,25 @@ def plot_group(ax_ts: plt.Axes, ax_info: plt.Axes, n: int, runs: List[RunSeries]
                 label="Best feasible point",
             ),
         ]
-        ax_ts.legend(handles=handles, loc="upper right", frameon=False)
+        ax_ts.legend(handles=handles, loc="upper right", frameon=True, facecolor="white", edgecolor="#d1d5db")
 
     best = get_best_event(runs)
-    ax_info.axis("off")
-    ax_info.text(0.02, 0.98, "Best configuration", va="top", fontsize=10, fontweight="bold", transform=ax_info.transAxes)
+    if ax_info is not None:
+        ax_info.axis("off")
+        ax_info.text(0.02, 0.98, "", va="top", fontsize=10, fontweight="bold", transform=ax_info.transAxes)
 
     if best is None:
         ax_info.text(0.02, 0.86, "No feasible best found", va="top", fontsize=9, transform=ax_info.transAxes)
         return
 
     _run_name, elapsed, best_L, svg_path, csv_geom = best
-    ax_ts.scatter([elapsed], [best_L], marker="*", s=130, zorder=6, edgecolors="black", linewidths=0.7, color="gold")
+    ax_ts.scatter([elapsed], [best_L], marker="*", s=145, zorder=6, edgecolors="black", linewidths=0.7, color="gold")
 
-    # Keep summary inside the graph area (under legend) and dedicate right panel to the image.
-    summary_text = f"N: {n}\nBest L: {best_L:.9f}\nTime found: {elapsed:.1f} s"
-    ax_ts.text(
-        0.985,
-        0.70,
-        summary_text,
-        transform=ax_ts.transAxes,
-        ha="right",
-        va="top",
-        fontsize=8.5,
-        bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "#d0d7de", "boxstyle": "round,pad=0.25"},
-    )
+    if ax_info is None:
+        return
 
     preview = load_best_preview(svg_path, csv_geom, workspace_dir)
-    img_ax = ax_info.inset_axes([0.03, 0.04, 0.94, 0.90])
+    img_ax = ax_info.inset_axes([0.02, 0.16, 0.96, 0.82])
     if preview is not None:
         img_ax.imshow(preview)
         img_ax.set_xticks([])
@@ -348,34 +381,52 @@ def plot_group(ax_ts: plt.Axes, ax_info: plt.Axes, n: int, runs: List[RunSeries]
         spine.set_linewidth(0.6)
         spine.set_edgecolor("#b7c0c9")
 
+    summary_text = f"Best configuration for N={n}\nL = {best_L:.9f}   |   t = {elapsed:.1f} s"
+    ax_info.text(
+        0.5,
+        0.07,
+        summary_text,
+        ha="center",
+        va="center",
+        fontsize=9,
+        transform=ax_info.transAxes,
+    )
+
 
 def main() -> int:
     args = parse_args()
     logs_dir = Path(args.logs_dir)
     output_png = Path(args.output)
     output_pdf = output_png.with_suffix(".pdf")
+    n_values = parse_n_values(args.n_values)
 
     if not logs_dir.exists():
         raise SystemExit(f"Logs directory not found: {logs_dir}")
 
     style_matplotlib()
-    by_n = collect_runs(logs_dir)
+    by_n = collect_runs(logs_dir, n_values)
 
-    fig = plt.figure(figsize=(15.5, 9.2), constrained_layout=True)
-    gs = fig.add_gridspec(2, 2, width_ratios=[4.6, 2.0], height_ratios=[1, 1])
-
-    ax00 = fig.add_subplot(gs[0, 0])
-    ax01 = fig.add_subplot(gs[0, 1])
-    ax10 = fig.add_subplot(gs[1, 0])
-    ax11 = fig.add_subplot(gs[1, 1])
+    fig_height = max(2.8 * len(n_values), 8.0)
+    if args.time_series_only:
+        fig = plt.figure(figsize=(12.5, fig_height), constrained_layout=True)
+        gs = fig.add_gridspec(len(n_values), 1, height_ratios=[1] * len(n_values))
+    else:
+        fig = plt.figure(figsize=(16.0, fig_height), constrained_layout=True)
+        gs = fig.add_gridspec(len(n_values), 2, width_ratios=[4.0, 2.5], height_ratios=[1] * len(n_values))
 
     workspace_dir = logs_dir.parent
-    plot_group(ax00, ax01, 5, by_n[5], workspace_dir)
-    plot_group(ax10, ax11, 10, by_n[10], workspace_dir)
+    for row, n in enumerate(n_values):
+        if args.time_series_only:
+            ax_ts = fig.add_subplot(gs[row, 0])
+            ax_info = None
+        else:
+            ax_ts = fig.add_subplot(gs[row, 0])
+            ax_info = fig.add_subplot(gs[row, 1])
+        plot_group(ax_ts, ax_info, n, by_n[n], workspace_dir)
+        panel_label = string.ascii_lowercase[row % len(string.ascii_lowercase)]
+        ax_ts.text(-0.08, 1.03, f"({panel_label})", transform=ax_ts.transAxes, fontsize=11, fontweight="bold")
 
-    ax00.text(-0.08, 1.03, "(a)", transform=ax00.transAxes, fontsize=11, fontweight="bold")
-    ax10.text(-0.08, 1.03, "(b)", transform=ax10.transAxes, fontsize=11, fontweight="bold")
-    fig.suptitle("Smoke Runs: Feasible Square Length Over Time", fontsize=14, fontweight="bold")
+    fig.suptitle("Feasible Square Length Over Time", fontsize=14, fontweight="bold")
 
     output_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_png, dpi=300)
@@ -383,10 +434,9 @@ def main() -> int:
     print(f"Saved: {output_png}")
     print(f"Saved: {output_pdf}")
 
-    n5_pts = sum(len(pts) for _, pts in by_n[5])
-    n10_pts = sum(len(pts) for _, pts in by_n[10])
-    print(f"N=5 runs: {len(by_n[5])}, feasible points: {n5_pts}")
-    print(f"N=10 runs: {len(by_n[10])}, feasible points: {n10_pts}")
+    for n in n_values:
+        n_pts = sum(len(pts) for _, pts in by_n[n])
+        print(f"N={n} runs: {len(by_n[n])}, feasible points: {n_pts}")
     return 0
 
 

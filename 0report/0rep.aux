@@ -1,0 +1,45 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{2025kaggle}
+\citation{demaine2007}
+\citation{bennell2008}
+\citation{leung2003}
+\citation{burke2006}
+\citation{hukushima1996}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction and Background}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction and Background}{section.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Problem Formulation}{1}{section.2}\protected@file@percent }
+\newlabel{sec:formulation}{{2}{1}{Problem Formulation}{section.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Algorithm}{1}{section.3}\protected@file@percent }
+\newlabel{sec:algorithm}{{3}{1}{Algorithm}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Collision Detection Pipeline}{1}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Energy Function and SA Schedule}{2}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:energy}{{1}{2}{Energy Function and SA Schedule}{equation.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Outer Minimisation: Bracketing, Bisection, and Polish}{2}{subsection.3.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces SA schedule parameters (per trial).}}{2}{table.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:phases}{{1}{2}{SA schedule parameters (per trial)}{table.caption.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{2}{section.4}\protected@file@percent }
+\newlabel{sec:experiments}{{4}{2}{Experimental Setup}{section.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{2}{section.5}\protected@file@percent }
+\newlabel{sec:results}{{5}{2}{Results}{section.5}{}}
+\bibstyle{plain}
+\bibcite{kirkpatrick1983}{1}
+\bibcite{leung2003}{2}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Best feasible side length, packing efficiency, and feasibility rate. Smoke tests ($N = 5, 10$) used 3-min wall time.}}{3}{table.caption.2}\protected@file@percent }
+\newlabel{tab:results}{{2}{3}{Best feasible side length, packing efficiency, and feasibility rate. Smoke tests ($N = 5, 10$) used 3-min wall time}{table.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{3}{section.6}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{3}{Conclusion}{section.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Feasible square side length $L$ over wall time for $N \in \{5, 10, 25, 50, 100, 200\}$ (panels a--f). Thin lines are individual worker traces; the thick line is the aggregate best-so-far envelope across all workers. The right panel for each row shows the best packing geometry found: every copy is the same 15-vertex non-convex polygon placed inside $\Omega _{L^*}$. At $N = 200$ only one worker reached feasibility, producing a single visible trace.}}{4}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:timeseries}{{1}{4}{Feasible square side length $L$ over wall time for $N \in \{5, 10, 25, 50, 100, 200\}$ (panels a--f). Thin lines are individual worker traces; the thick line is the aggregate best-so-far envelope across all workers. The right panel for each row shows the best packing geometry found: every copy is the same 15-vertex non-convex polygon placed inside $\Omega _{L^*}$. At $N = 200$ only one worker reached feasibility, producing a single visible trace}{figure.caption.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Best-so-far packing efficiency $\eta = NA_p/L^2$ versus wall time. Thin lines are individual workers; the thick line is the median across feasible workers. The plateau after initial improvement reflects the bisection phase locking in a bracket; gains thereafter come from the adaptive polish phase.}}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:density}{{2}{5}{Best-so-far packing efficiency $\eta = NA_p/L^2$ versus wall time. Thin lines are individual workers; the thick line is the median across feasible workers. The plateau after initial improvement reflects the bisection phase locking in a bracket; gains thereafter come from the adaptive polish phase}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Wall time to final best feasible configuration by $N$. Boxes show the interquartile range; dots are individual workers. The sharp increase at $N \geq 50$ confirms that the polish phase, not bisection, produces most improvement at large scale.}}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:timetobest}{{3}{5}{Wall time to final best feasible configuration by $N$. Boxes show the interquartile range; dots are individual workers. The sharp increase at $N \geq 50$ confirms that the polish phase, not bisection, produces most improvement at large scale}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Best packing efficiency $\eta $ versus $N$. Density declines monotonically, driven by both boundary geometry and the fixed iteration budget that under-explores larger configuration spaces.}}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:densityN}{{4}{5}{Best packing efficiency $\eta $ versus $N$. Density declines monotonically, driven by both boundary geometry and the fixed iteration budget that under-explores larger configuration spaces}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Packing efficiency $\eta $ versus $1/\!\sqrt  {N}$. The approximately linear trend supports $\eta (N) \approx \eta _\infty + c/\!\sqrt  {N}$ with $\eta _\infty \approx 0.40$, consistent with the perimeter-to-area boundary argument.}}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:scaling}{{5}{5}{Packing efficiency $\eta $ versus $1/\!\sqrt {N}$. The approximately linear trend supports $\eta (N) \approx \eta _\infty + c/\!\sqrt {N}$ with $\eta _\infty \approx 0.40$, consistent with the perimeter-to-area boundary argument}{figure.caption.4}{}}
+\gdef \@abspage@last{5}

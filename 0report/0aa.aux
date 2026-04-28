@@ -1,0 +1,47 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{demaine2007}
+\citation{bennell2008}
+\citation{leung2003}
+\citation{burke2006}
+\citation{hukushima1996}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Problem Formulation}{1}{section.2}\protected@file@percent }
+\newlabel{sec:formulation}{{2}{1}{Problem Formulation}{section.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Algorithm}{2}{section.3}\protected@file@percent }
+\newlabel{sec:algorithm}{{3}{2}{Algorithm}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Collision Detection Pipeline}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Energy Function and SA Schedule}{2}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:energy}{{3.2}{2}{Energy Function and SA Schedule}{subsection.3.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Two-phase SA schedule parameters.}}{2}{table.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:sa}{{1}{2}{Two-phase SA schedule parameters}{table.caption.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Outer Loop: Bisection and Polish}{2}{subsection.3.3}\protected@file@percent }
+\bibstyle{plain}
+\bibcite{kaggle2025}{1}
+\bibcite{bennell2008}{2}
+\bibcite{burke2006}{3}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{3}{section.4}\protected@file@percent }
+\newlabel{sec:experiments}{{4}{3}{Experimental Setup}{section.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{3}{section.5}\protected@file@percent }
+\newlabel{sec:results}{{5}{3}{Results}{section.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Best feasible side length, packing efficiency, and feasibility rate by instance size. $N = 5$ and $N = 10$ used the five-node pipeline (3-min smoke tests); $N \geq 25$ used single-node array jobs (4--8\,h). Cross-$N$ comparisons should be read with this provenance difference in mind.}}{3}{table.caption.2}\protected@file@percent }
+\newlabel{tab:results}{{2}{3}{Best feasible side length, packing efficiency, and feasibility rate by instance size. $N = 5$ and $N = 10$ used the five-node pipeline (3-min smoke tests); $N \geq 25$ used single-node array jobs (4--8\,h). Cross-$N$ comparisons should be read with this provenance difference in mind}{table.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{3}{section.6}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{3}{Conclusion}{section.6}{}}
+\bibcite{kaggle2025}{4}
+\bibcite{kirkpatrick1983}{5}
+\bibcite{leung2003}{6}
+\bibcite{sokal1997}{7}
+\bibcite{vogel2026}{8}
+\bibcite{zhang2025}{9}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Collision detection pipeline. Top-left: broad phase using a uniform spatial hash and neighborhood query. Top-right: polygon AABB culling. Bottom-left: group-level AABB pruning after triangulation into clustered subsets. Bottom-right: triangle-triangle SAT narrow phase returning penetration depth $d$, which feeds the overlap energy.}}{5}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:collision-pipeline}{{1}{5}{Collision detection pipeline. Top-left: broad phase using a uniform spatial hash and neighborhood query. Top-right: polygon AABB culling. Bottom-left: group-level AABB pruning after triangulation into clustered subsets. Bottom-right: triangle-triangle SAT narrow phase returning penetration depth $d$, which feeds the overlap energy}{figure.caption.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Feasible square side length $L$ versus wall time across $N \in \{5,10,25,50,100,200\}$. The traces show that large-$N$ improvements arrive later and that the search spends much longer near its best-known feasible bracket before finding further gains.}}{6}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:timeseries-full}{{2}{6}{Feasible square side length $L$ versus wall time across $N \in \{5,10,25,50,100,200\}$. The traces show that large-$N$ improvements arrive later and that the search spends much longer near its best-known feasible bracket before finding further gains}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Best-so-far packing density $\eta = N A_p/L^2$ versus wall time. The late-time slope at larger $N$ is consistent with most of the final improvement occurring during feasibility polish rather than during the initial bracket search.}}{7}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:density-full}{{3}{7}{Best-so-far packing density $\eta = N A_p/L^2$ versus wall time. The late-time slope at larger $N$ is consistent with most of the final improvement occurring during feasibility polish rather than during the initial bracket search}{figure.caption.5}{}}
+\gdef \@abspage@last{7}

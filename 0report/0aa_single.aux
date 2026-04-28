@@ -1,0 +1,49 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{bennell2008}
+\citation{leung2003}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Problem Formulation}{1}{section.2}\protected@file@percent }
+\newlabel{sec:formulation}{{2}{1}{Problem Formulation}{section.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Algorithm}{2}{section.3}\protected@file@percent }
+\newlabel{sec:algorithm}{{3}{2}{Algorithm}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Collision Detection Pipeline}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Energy Function and Simmulated Annealing Schedule}{2}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:energy}{{3.2}{2}{Energy Function and Simmulated Annealing Schedule}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Outer Loop: Bisection and Polish}{2}{subsection.3.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Collision detection pipeline. Top-left: broad phase using a uniform spatial hash and neighborhood query. Top-right: polygon AABB culling. Bottom-left: group-level AABB pruning after triangulation into clustered subsets. Bottom-right: triangle-triangle SAT narrow phase returning penetration depth $d$, which feeds the overlap energy.}}{3}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:collision-pipeline}{{1}{3}{Collision detection pipeline. Top-left: broad phase using a uniform spatial hash and neighborhood query. Top-right: polygon AABB culling. Bottom-left: group-level AABB pruning after triangulation into clustered subsets. Bottom-right: triangle-triangle SAT narrow phase returning penetration depth $d$, which feeds the overlap energy}{figure.caption.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Two-phase simmulated annealing schedule parameters.}}{4}{table.caption.2}\protected@file@percent }
+\newlabel{tab:sa}{{1}{4}{Two-phase simmulated annealing schedule parameters}{table.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{4}{section.4}\protected@file@percent }
+\newlabel{sec:experiments}{{4}{4}{Experimental Setup}{section.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Best-so-far feasible square side length $L$ versus wall time for $N \in \{5,10,25\}$.}}{5}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:timeseries-smallN}{{2}{5}{Best-so-far feasible square side length $L$ versus wall time for $N \in \{5,10,25\}$}{figure.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Best feasible side length, packing efficiency, and feasibility rate by instance size. $N = 5$ and $N = 10$ used the five-node pipeline (3-min smoke tests); $N \geq 25$ used single-node array jobs (4--8\,h). Cross-$N$ comparisons should be read with this provenance difference in mind.}}{5}{table.caption.6}\protected@file@percent }
+\newlabel{tab:results}{{2}{5}{Best feasible side length, packing efficiency, and feasibility rate by instance size. $N = 5$ and $N = 10$ used the five-node pipeline (3-min smoke tests); $N \geq 25$ used single-node array jobs (4--8\,h). Cross-$N$ comparisons should be read with this provenance difference in mind}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{5}{section.5}\protected@file@percent }
+\newlabel{sec:results}{{5}{5}{Results}{section.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Best recovered polygon packing configurations for each reported problem size.}}{6}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:final-configs-allN}{{3}{6}{Best recovered polygon packing configurations for each reported problem size}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Best-so-far feasible square side length $L$ versus wall time for $N \in \{50,100,200\}$.}}{7}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:timeseries-largeN}{{4}{7}{Best-so-far feasible square side length $L$ versus wall time for $N \in \{50,100,200\}$}{figure.caption.5}{}}
+\bibstyle{plain}
+\bibcite{bennell2008}{1}
+\bibcite{burke2006}{2}
+\bibcite{kaggle2025}{3}
+\bibcite{kirkpatrick1983}{4}
+\bibcite{leung2003}{5}
+\bibcite{sokal1997}{6}
+\bibcite{vogel2026}{7}
+\bibcite{zhang2025}{8}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{8}{section.6}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{8}{Conclusion}{section.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Appendix: Density Trajectory}{8}{appendix.A}\protected@file@percent }
+\newlabel{sec:appendix-density}{{A}{8}{Appendix: Density Trajectory}{appendix.A}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Best-so-far packing density $\eta = N A_p/L^2$ versus wall time. The late-time slope at larger $N$ is consistent with most of the final improvement occurring during feasibility polish rather than during the initial bracket search.}}{9}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:density-full}{{5}{9}{Best-so-far packing density $\eta = N A_p/L^2$ versus wall time. The late-time slope at larger $N$ is consistent with most of the final improvement occurring during feasibility polish rather than during the initial bracket search}{figure.caption.7}{}}
+\gdef \@abspage@last{9}
